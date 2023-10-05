@@ -5,3 +5,7 @@ Debug
 *.vcxproj
 *.vcxproj.filters
 *.vcxproj.users
+HW2/CS580HW2.vcxproj.user
+HW1/CS580HW1.vcxproj.user
+*.dsw
+*.dsp
