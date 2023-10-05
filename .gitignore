@@ -2,4 +2,6 @@
 .ipch
 .vs
 Debug
-.vcxproj
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.users
