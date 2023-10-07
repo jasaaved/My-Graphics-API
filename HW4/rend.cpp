@@ -21,6 +21,19 @@ float dot_product(GzCoord a, GzCoord b, int size) {
 	return sum;
 }
 
+bool isRotation(GzMatrix matrix) {
+
+	if (matrix[0][3] != 0 || matrix[1][3] != 0 || matrix[2][3] != 0 || matrix[3][0] != 0 || matrix[3][1] != 0 || matrix[3][2] != 0 || matrix[3][3] != 1) {
+		return false;
+	}
+
+	if (matrix[0][0] == matrix[1][1] && matrix[0][0] == matrix[2][2] && matrix[1][1] == matrix[2][2]) {
+		return false;
+	}
+	return true;
+}
+
+
 int GzRender::GzRotXMat(float degree, GzMatrix mat)
 {
 	/* HW 3.1
@@ -262,6 +275,8 @@ int GzRender::GzBeginRender()
 		return GZ_FAILURE;
 	}
 
+
+
 	return GZ_SUCCESS;
 }
 
@@ -289,6 +304,15 @@ int GzRender::GzPushMatrix(GzMatrix	matrix)
 	- push a matrix onto the Ximage stack
 	- check for stack overflow
 	*/
+	bool isRot;
+	GzMatrix identity_matrix;
+	memset(identity_matrix, 0, sizeof(identity_matrix));
+	identity_matrix[0][0] = 1.0;
+	identity_matrix[1][1] = 1.0;
+	identity_matrix[2][2] = 1.0;
+	identity_matrix[3][3] = 1.0;
+
+
 	if (matlevel >= MATLEVELS) {
 		return GZ_FAILURE;
 	}
@@ -298,19 +322,47 @@ int GzRender::GzPushMatrix(GzMatrix	matrix)
 		for (int i = 0; i < 4; i++) {
 			for (int j = 0; j < 4; j++) {
 				Ximage[matlevel][i][j] = matrix[i][j];
+				Xnorm[matlevel][i][j] = identity_matrix[i][j];
 			}
 		}
+
 	}
 	else {
 		matlevel++;
+		isRot = isRotation(matrix);
+
 		for (int i = 0; i < 4; i++) {
 			for (int j = 0; j < 4; j++) {
 				Ximage[matlevel][i][j] = 0;
+				Xnorm[matlevel][i][j] = 0;
+				if (matlevel < 2) {
+					Xnorm[matlevel][i][j] = identity_matrix[i][j];
+				}
+
+				else if (matlevel == 2) {
+					Xnorm[matlevel][i][j] = m_camera.Xiw[i][j];
+				}
+
+				else {
+					Ximage[matlevel][i][j] = 0;
+				}
+
 				for (int k = 0; k < 4; k++) {
 					Ximage[matlevel][i][j] += Ximage[matlevel - 1][i][k] * matrix[k][j];
+
+					if (isRot && matlevel > 2) {
+						Xnorm[matlevel][i][j] += Xnorm[matlevel - 1][i][k] * matrix[k][j];
+					}
+					else if (!isRot && matlevel > 2) {
+						Xnorm[matlevel][i][j] += Xnorm[matlevel - 1][i][k] * identity_matrix[k][j];
+					}
 				}
 			}
 		}
+		Xnorm[matlevel][0][3] = 0;
+		Xnorm[matlevel][1][3] = 0;
+		Xnorm[matlevel][2][3] = 0;
+
 	}
 
 	return GZ_SUCCESS;
@@ -487,6 +539,27 @@ int GzRender::GzPutAttribute(int numAttributes, GzToken* nameList, GzPointer* va
 			copy(((GzLight*)valueList[i])->direction, ((GzLight*)valueList[i])->direction + 3, lights[numlights].direction);
 			copy(((GzLight*)valueList[i])->color, ((GzLight*)valueList[i])->color + 3, lights[numlights].color);
 			numlights++;
+		}
+
+		else if (nameList[i] == GZ_AMBIENT_LIGHT) {
+			copy(((GzLight*)valueList[i])->direction, ((GzLight*)valueList[i])->direction + 3, ambientlight.direction);
+			copy(((GzLight*)valueList[i])->color, ((GzLight*)valueList[i])->color + 3, ambientlight.color);
+		}
+
+		else if (nameList[i] == GZ_AMBIENT_COEFFICIENT) {
+			copy(((GzColor*)valueList[i])[0], ((GzColor*)valueList[i])[0] + 3, Ka);
+		}
+
+		else if (nameList[i] == GZ_DIFFUSE_COEFFICIENT) {
+			copy(((GzColor*)valueList[i])[0], ((GzColor*)valueList[i])[0] + 3, Kd);
+		}
+
+		else if (nameList[i] == GZ_SPECULAR_COEFFICIENT) {
+			copy(((GzColor*)valueList[i])[0], ((GzColor*)valueList[i])[0] + 3, Ks);
+		}
+
+		else if (nameList[i] == GZ_DISTRIBUTION_COEFFICIENT) {
+			spec = ((float*)valueList[i])[0];
 		}
 
 
