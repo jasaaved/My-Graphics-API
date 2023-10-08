@@ -21,6 +21,20 @@ float dot_product(GzCoord a, GzCoord b, int size) {
 	return sum;
 }
 
+void normalize(GzCoord& vector, int size) {
+	float total = 0.0;
+	for (int i = 0; i < size; i++) {
+		total += vector[i] * vector[i];
+	}
+
+	total = sqrt(total);
+
+	for (int i = 0; i < size; i++) {
+		vector[i] /= total;
+	}
+}
+
+
 bool isRotation(GzMatrix matrix) {
 
 	if (matrix[0][3] != 0 || matrix[1][3] != 0 || matrix[2][3] != 0 || matrix[3][0] != 0 || matrix[3][1] != 0 || matrix[3][2] != 0 || matrix[3][3] != 1) {
@@ -270,6 +284,7 @@ int GzRender::GzBeginRender()
 	m_camera.Xiw[3][3] = 1.0;
 
 	status |= GzPushMatrix(m_camera.Xiw);
+
 
 	if (status == 1) {
 		return GZ_FAILURE;
@@ -597,6 +612,7 @@ int GzRender::GzPutTriangle(int numParts, GzToken* nameList, GzPointer* valueLis
 			for (int i = 0; i < 3; i++) {
 				for (int j = 0; j < 4; j++) {
 					transformed_vertices[i][j] = 0;
+					transformed_normals[i][j] = 0;
 					for (int k = 0; k < 4; k++) {
 						transformed_vertices[i][j] += Ximage[matlevel][j][k] * vertices_in_4D[i][k];
 						transformed_normals[i][j] += Xnorm[matlevel][j][k] * normals_in_4D[i][k];
@@ -618,7 +634,73 @@ int GzRender::GzPutTriangle(int numParts, GzToken* nameList, GzPointer* valueLis
 				GzCoord V2 = { vertices[1][0], vertices[1][1],vertices[1][2] };
 				GzCoord V3 = { vertices[2][0], vertices[2][1],vertices[2][2] };
 
+				GzColor C[3], specular[3], diffuse[3], ambient[3];
+				memset(C, 0, sizeof(C));
+				memset(specular, 0, sizeof(specular));
+				memset(diffuse, 0, sizeof(diffuse));
+				memset(ambient, 0, sizeof(ambient));
+				GzCoord E = { 0,0,-1 };
+				GzCoord R;
+				float RdotE, NdotL, NdotE;
 
+				for (int i = 0; i < 3; i++) {
+					for (int j = 0; j < numlights; j++) {
+						NdotL = dot_product(normals[i], lights[j].direction, 3);
+						NdotE = dot_product(normals[i], E, 3);
+
+						if ((NdotL > 0 && NdotE > 0) || (NdotL < 0 && NdotE < 0)) {
+							
+							for (int k = 0; k < 3; k++) {
+								R[k] = 2.0 * NdotL * normals[i][k] - lights[j].direction[k];
+							}
+
+							normalize(R, 3);
+							RdotE = dot_product(R, E, 3);
+
+							if (RdotE < 0) {
+								RdotE = 0;
+							}
+
+							else if (RdotE > 1) {
+								RdotE = 1;
+							}
+
+							for (int k = 0; k < 3; k++) {
+								specular[i][k] += Ks[k] * pow(RdotE, spec) * lights[j].color[k];
+
+								if (NdotE < 0 || NdotL < 0) {
+									for (int m = 0; m < 3; m++) {
+										normals[i][m] *= -1;
+									}
+									NdotL = dot_product(normals[i], lights[j].direction, 3);
+								}
+
+								diffuse[i][k] += Kd[k] * NdotL * lights[j].color[k];
+							}
+							
+						}
+					}
+
+					for (int j = 0; j < 3; j++) {
+						ambient[i][j] += Ka[j] * ambientlight.color[j];
+					}
+				}
+
+				for (int i = 0; i < 3; i++) {
+					for (int j = 0; j < 3; j++) {
+						C[i][j] = specular[i][j] + diffuse[i][j] + ambient[i][j];
+
+						if (C[i][j] < 0) {
+							C[i][j] = 0;
+						}
+
+						else if (C[i][j] > 1.0) {
+							C[i][j] = 1.0;
+						}
+					}
+				}
+
+				
 				GzCoord start = { V1[0], V1[1], V1[2] };
 				GzCoord end = { V2[0], V2[1], V2[2] };
 				GzCoord end_V3 = { V3[0], V3[1], V3[2] };
@@ -685,9 +767,12 @@ int GzRender::GzPutTriangle(int numParts, GzToken* nameList, GzPointer* valueLis
 						x = std::ceil(current_span[0]);
 						y = std::ceil(current[1]);
 						z = std::ceil(current_span[1]);
-						r = ctoi(flatcolor[0]);
-						g = ctoi(flatcolor[1]);
-						b = ctoi(flatcolor[2]);
+
+						if (interp_mode == GZ_FLAT) {
+							r = ctoi(C[0][0]);
+							g = ctoi(C[0][1]);
+							b = ctoi(C[0][2]);
+						}
 
 						GzPut(x, y, r, g, b, 1, z);
 
@@ -755,11 +840,14 @@ int GzRender::GzPutTriangle(int numParts, GzToken* nameList, GzPointer* valueLis
 						x = std::ceil(current_span[0]);
 						y = std::ceil(current[1]);
 						z = std::ceil(current_span[1]);
-						r = ctoi(flatcolor[0]);
-						g = ctoi(flatcolor[1]);
-						b = ctoi(flatcolor[2]);
 
-						GzPut(x, y, r, g, b, 0, z);
+						if (interp_mode == GZ_FLAT) {
+							r = ctoi(C[0][0]);
+							g = ctoi(C[0][1]);
+							b = ctoi(C[0][2]);
+						}
+
+						GzPut(x, y, r, g, b, 1, z);
 
 						deltax = 1;
 						current_span[0] = current_span[0] + deltax;
