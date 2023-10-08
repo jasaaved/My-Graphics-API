@@ -500,7 +500,7 @@ int GzRender::GzPutTriangle(int numParts, GzToken *nameList, GzPointer *valueLis
 
 			for (int i = 0; i < 3; i++) {
 				for (int j = 0; j < 3; j++) {
-					vertices_in_4D[i][j] = ((GzCoord*)(valueList[s]))[i][j];
+					vertices_in_4D[i][j] = ((GzCoord*)(valueList[0]))[i][j];
 				}
 				vertices_in_4D[i][3] = 1.0;
 			}

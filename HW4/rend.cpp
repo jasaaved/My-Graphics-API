@@ -491,7 +491,7 @@ int GzRender::GzFlushDisplay2FrameBuffer()
 /***********************************************/
 /* HW2 methods: implement from here */
 
-void sort_vertices(GzCoord* vertices) {
+void sort_vertices(GzCoord* vertices, GzCoord* normals) {
 	int current_lowest;
 	float highest_height;
 
@@ -511,7 +511,8 @@ void sort_vertices(GzCoord* vertices) {
 		}
 
 		if (current_lowest != i) {
-			std::swap(vertices[i], vertices[current_lowest]);
+			swap(vertices[i], vertices[current_lowest]);
+			swap(normals[i], normals[current_lowest]);
 		}
 	}
 }
@@ -581,14 +582,16 @@ int GzRender::GzPutTriangle(int numParts, GzToken* nameList, GzPointer* valueLis
 	for (int s = 0; s < numParts; s++) {
 
 		if (nameList[s] == GZ_POSITION) {
-			float vertices_in_4D[3][4], transformed_vertices[3][4];
-			GzCoord vertices[3];
+			float vertices_in_4D[3][4], normals_in_4D[3][4], transformed_vertices[3][4], transformed_normals[3][4];
+			GzCoord vertices[3], normals[3];
 
 			for (int i = 0; i < 3; i++) {
 				for (int j = 0; j < 3; j++) {
-					vertices_in_4D[i][j] = ((GzCoord*)(valueList[s]))[i][j];
+					vertices_in_4D[i][j] = ((GzCoord*)(valueList[0]))[i][j];
+					normals_in_4D[i][j] = ((GzCoord*)(valueList[1]))[i][j];
 				}
 				vertices_in_4D[i][3] = 1.0;
+				normals_in_4D[i][3] = 1.0;
 			}
 
 			for (int i = 0; i < 3; i++) {
@@ -596,6 +599,7 @@ int GzRender::GzPutTriangle(int numParts, GzToken* nameList, GzPointer* valueLis
 					transformed_vertices[i][j] = 0;
 					for (int k = 0; k < 4; k++) {
 						transformed_vertices[i][j] += Ximage[matlevel][j][k] * vertices_in_4D[i][k];
+						transformed_normals[i][j] += Xnorm[matlevel][j][k] * normals_in_4D[i][k];
 					}
 				}
 			}
@@ -603,12 +607,13 @@ int GzRender::GzPutTriangle(int numParts, GzToken* nameList, GzPointer* valueLis
 			for (int i = 0; i < 3; i++) {
 				for (int j = 0; j < 3; j++) {
 					vertices[i][j] = transformed_vertices[i][j] / transformed_vertices[i][3];
+					normals[i][j] = transformed_normals[i][j] / transformed_normals[i][3];
 				}
 			}
 			//Check for negative screen z vertex
 			if (vertices[0][2] >= 0 && vertices[1][2] >= 0 && vertices[2][2] >= 0) {
 
-				sort_vertices(vertices);
+				sort_vertices(vertices, normals);
 				GzCoord V1 = { vertices[0][0], vertices[0][1],vertices[0][2] };
 				GzCoord V2 = { vertices[1][0], vertices[1][1],vertices[1][2] };
 				GzCoord V3 = { vertices[2][0], vertices[2][1],vertices[2][2] };
