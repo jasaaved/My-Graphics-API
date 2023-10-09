@@ -629,6 +629,77 @@ int GzRender::GzPutTriangle(int numParts, GzToken* nameList, GzPointer* valueLis
 			//Check for negative screen z vertex
 			if (vertices[0][2] >= 0 && vertices[1][2] >= 0 && vertices[2][2] >= 0) {
 
+				sort_vertices(vertices, normals);
+				GzCoord V1 = { vertices[0][0], vertices[0][1],vertices[0][2] };
+				GzCoord V2 = { vertices[1][0], vertices[1][1],vertices[1][2] };
+				GzCoord V3 = { vertices[2][0], vertices[2][1],vertices[2][2] };
+
+				GzColor C, specular, diffuse, ambient;
+				memset(C, 0, sizeof(C));
+				memset(specular, 0, sizeof(specular));
+				memset(diffuse, 0, sizeof(diffuse));
+				memset(ambient, 0, sizeof(ambient));
+				GzCoord E = { 0,0,-1 };
+				GzCoord R;
+				float RdotE, NdotL, NdotE;
+				GzCoord normal_of_triangle;
+
+				float sumx = normals[0][0] + normals[1][0] + normals[2][0];
+				float sumy = normals[0][1] + normals[1][1] + normals[2][1];
+				float sumz = normals[0][2] + normals[1][2] + normals[2][2];
+				normal_of_triangle[0] = sumx / 3;
+				normal_of_triangle[1] = sumy / 3;
+				normal_of_triangle[2] = sumz / 3;
+				
+
+				for (int j = 0; j < numlights; j++) {
+					NdotL = dot_product(normal_of_triangle, lights[j].direction, 3);
+					NdotE = dot_product(normal_of_triangle, E, 3);
+
+					if ((NdotL > 0 && NdotE > 0) || (NdotL < 0 && NdotE < 0)) {
+
+						for (int k = 0; k < 3; k++) {
+							R[k] = 2.0 * NdotL * normal_of_triangle[k] - lights[j].direction[k];
+						}
+
+						normalize(R, 3);
+						RdotE = dot_product(R, E, 3);
+
+						if (RdotE < 0) {
+							RdotE = 0;
+						}
+
+						else if (RdotE > 1) {
+							RdotE = 1;
+						}
+
+						for (int k = 0; k < 3; k++) {
+							specular[k] += Ks[k] * pow(RdotE, spec) * lights[j].color[k];
+
+							if (NdotE < 0 || NdotL < 0) {
+								for (int m = 0; m < 3; m++) {
+									normal_of_triangle[m] *= -1;
+								}
+								NdotL = dot_product(normal_of_triangle, lights[j].direction, 3);
+							}
+
+							diffuse[k] += Kd[k] * NdotL * lights[j].color[k];
+						}
+
+					}
+				}
+				for (int i = 0; i < 3; i++) {
+						C[i] = specular[i] + diffuse[i] + ambient[i];
+
+						if (C[i] < 0) {
+							C[i] = 0;
+						}
+
+						else if (C[i] > 1.0) {
+							C[i] = 1.0;
+						}
+				}
+				/*
 				GzColor C[3], specular[3], diffuse[3], ambient[3];
 				memset(C, 0, sizeof(C));
 				memset(specular, 0, sizeof(specular));
@@ -638,85 +709,64 @@ int GzRender::GzPutTriangle(int numParts, GzToken* nameList, GzPointer* valueLis
 				GzCoord R;
 				float RdotE, NdotL, NdotE;
 
-				//if GZ_FLAT color will only be calculated on the first vertex
-				int n;
-				if (interp_mode == GZ_FLAT) {
-					n = 1;
-				}
+				for (int i = 0; i < 3; i++) {
+					for (int j = 0; j < numlights; j++) {
+						NdotL = dot_product(normals[i], lights[j].direction, 3);
+						NdotE = dot_product(normals[i], E, 3);
 
-				else {
-					n = 3;
-					sort_vertices(vertices, normals);
-				}
+						if ((NdotL > 0 && NdotE > 0) || (NdotL < 0 && NdotE < 0)) {
+							
+							for (int k = 0; k < 3; k++) {
+								R[k] = 2.0 * NdotL * normals[i][k] - lights[j].direction[k];
+							}
 
+							normalize(R, 3);
+							RdotE = dot_product(R, E, 3);
 
-				if (interp_mode == GZ_FLAT || interp_mode == GZ_COLOR) {
-					for (int i = 0; i < n; i++) {
-						for (int j = 0; j < numlights; j++) {
-							NdotL = dot_product(normals[i], lights[j].direction, 3);
-							NdotE = dot_product(normals[i], E, 3);
+							if (RdotE < 0) {
+								RdotE = 0;
+							}
 
-							if ((NdotL > 0 && NdotE > 0) || (NdotL < 0 && NdotE < 0)) {
+							else if (RdotE > 1) {
+								RdotE = 1;
+							}
 
-								for (int k = 0; k < 3; k++) {
-									R[k] = 2.0 * NdotL * normals[i][k] - lights[j].direction[k];
-								}
+							for (int k = 0; k < 3; k++) {
+								specular[i][k] += Ks[k] * pow(RdotE, spec) * lights[j].color[k];
 
-								normalize(R, 3);
-								RdotE = dot_product(R, E, 3);
-
-								if (RdotE < 0) {
-									RdotE = 0;
-								}
-
-								else if (RdotE > 1) {
-									RdotE = 1;
-								}
-
-								for (int k = 0; k < 3; k++) {
-									specular[i][k] += Ks[k] * pow(RdotE, spec) * lights[j].color[k];
-
-									if (NdotE < 0 || NdotL < 0) {
-										for (int m = 0; m < 3; m++) {
-											normals[i][m] *= -1;
-										}
-										NdotL = dot_product(normals[i], lights[j].direction, 3);
+								if (NdotE < 0 || NdotL < 0) {
+									for (int m = 0; m < 3; m++) {
+										normals[i][m] *= -1;
 									}
-
-									diffuse[i][k] += Kd[k] * NdotL * lights[j].color[k];
+									NdotL = dot_product(normals[i], lights[j].direction, 3);
 								}
 
+								diffuse[i][k] += Kd[k] * NdotL * lights[j].color[k];
 							}
-						}
-
-						for (int j = 0; j < 3; j++) {
-							ambient[i][j] += Ka[j] * ambientlight.color[j];
+							
 						}
 					}
 
-					for (int i = 0; i < n; i++) {
-						for (int j = 0; j < 3; j++) {
-							C[i][j] = specular[i][j] + diffuse[i][j] + ambient[i][j];
+					for (int j = 0; j < 3; j++) {
+						ambient[i][j] += Ka[j] * ambientlight.color[j];
+					}
+				}
 
-							if (C[i][j] < 0) {
-								C[i][j] = 0;
-							}
+				for (int i = 0; i < 3; i++) {
+					for (int j = 0; j < 3; j++) {
+						C[i][j] = specular[i][j] + diffuse[i][j] + ambient[i][j];
 
-							else if (C[i][j] > 1.0) {
-								C[i][j] = 1.0;
-							}
+						if (C[i][j] < 0) {
+							C[i][j] = 0;
+						}
+
+						else if (C[i][j] > 1.0) {
+							C[i][j] = 1.0;
 						}
 					}
 				}
-				
-				//For GZ_FLAT vertices are sorted after Color is computed
-				if (interp_mode == GZ_FLAT) {
-					sort_vertices(vertices, normals);
-				}
-				
-				GzCoord V1 = { vertices[0][0], vertices[0][1],vertices[0][2] };
-				GzCoord V2 = { vertices[1][0], vertices[1][1],vertices[1][2] };
-				GzCoord V3 = { vertices[2][0], vertices[2][1],vertices[2][2] };
+				*/
+
 				
 				GzCoord start = { V1[0], V1[1], V1[2] };
 				GzCoord end = { V2[0], V2[1], V2[2] };
@@ -786,9 +836,9 @@ int GzRender::GzPutTriangle(int numParts, GzToken* nameList, GzPointer* valueLis
 						z = std::ceil(current_span[1]);
 
 						if (interp_mode == GZ_FLAT) {
-							r = ctoi(C[0][0]);
-							g = ctoi(C[0][1]);
-							b = ctoi(C[0][2]);
+							r = ctoi(C[0]);
+							g = ctoi(C[1]);
+							b = ctoi(C[2]);
 						}
 
 						GzPut(x, y, r, g, b, 1, z);
@@ -859,9 +909,9 @@ int GzRender::GzPutTriangle(int numParts, GzToken* nameList, GzPointer* valueLis
 						z = std::ceil(current_span[1]);
 
 						if (interp_mode == GZ_FLAT) {
-							r = ctoi(C[0][0]);
-							g = ctoi(C[0][1]);
-							b = ctoi(C[0][2]);
+							r = ctoi(C[0]);
+							g = ctoi(C[1]);
+							b = ctoi(C[2]);
 						}
 
 						GzPut(x, y, r, g, b, 1, z);
