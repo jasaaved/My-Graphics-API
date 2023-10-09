@@ -723,19 +723,30 @@ int GzRender::GzPutTriangle(int numParts, GzToken* nameList, GzPointer* valueLis
 				GzCoord end_V3 = { V3[0], V3[1], V3[2] };
 				GzCoord current = { V1[0], V1[1], V1[2] };
 				GzCoord current_V3 = { V1[0], V1[1], V1[2] };
+				GzColor current_color = { C[0][0], C[0][1], C[0][2] };
+				GzColor current_color_V3 = { C[0][0], C[0][1], C[0][2] };
 				char edge;
-				float slopex, slopez, slopex_V3, slopez_V3, slopez_span, deltay, deltax;
+				float slopex, slopez, slopex_V3, slopez_V3, slopez_span, deltay, deltax, slopeRy, slopeGy, slopeBy, slopeRy_V3, slopeGy_V3, slopeBy_V3;
 				int x, y, z;
 				GzIntensity r, g, b;
 				float start_span[2], end_span[2], current_span[2];
+				GzColor start_color_span, end_color_span;
 				int made_switch = 0;
 
 				slopex = (end[0] - start[0]) / (end[1] - start[1]);
 				slopez = (end[2] - start[2]) / (end[1] - start[1]);
 				deltay = ceil(start[1]) - start[1];
 
+				slopeRy = (C[1][0] - C[0][0]) / (end[1] - start[1]);
+				slopeGy = (C[1][1] - C[0][1]) / (end[1] - start[1]);
+				slopeBy = (C[1][2] - C[0][2]) / (end[1] - start[1]);
+
 				slopex_V3 = (end_V3[0] - start[0]) / (end_V3[1] - start[1]);
 				slopez_V3 = (end_V3[2] - start[2]) / (end_V3[1] - start[1]);
+
+				slopeRy_V3 = (C[2][0] - C[0][0]) / (end_V3[1] - start[1]);
+				slopeGy_V3 = (C[2][1] - C[0][1]) / (end_V3[1] - start[1]);
+				slopeBy_V3 = (C[2][2] - C[0][2]) / (end_V3[1] - start[1]);
 
 				if (slopex >= slopex_V3) {
 					edge = 'R';
@@ -753,6 +764,7 @@ int GzRender::GzPutTriangle(int numParts, GzToken* nameList, GzPointer* valueLis
 				current_V3[1] = current_V3[1] + deltay;
 				current_V3[2] = current_V3[2] + (slopez_V3 * deltay);
 
+
 				while (current[1] <= end[1]) {
 
 					//SPAN
@@ -763,6 +775,13 @@ int GzRender::GzPutTriangle(int numParts, GzToken* nameList, GzPointer* valueLis
 						current_span[1] = start_span[1];
 						end_span[0] = current[0];
 						end_span[1] = current[2];
+
+						start_color_span[0] = current_color_V3[0];
+						start_color_span[1] = current_color_V3[1];
+						start_color_span[2] = current_color_V3[2];
+						end_color_span[0] = current_color[0];
+						end_color_span[1] = current_color[1];
+						end_color_span[2] = current_color[2];
 					}
 
 					else {
@@ -772,6 +791,13 @@ int GzRender::GzPutTriangle(int numParts, GzToken* nameList, GzPointer* valueLis
 						current_span[1] = start_span[1];
 						end_span[0] = current_V3[0];
 						end_span[1] = current_V3[2];
+
+						start_color_span[0] = current_color[0];
+						start_color_span[1] = current_color[1];
+						start_color_span[2] = current_color[2];
+						end_color_span[0] = current_color_V3[0];
+						end_color_span[1] = current_color_V3[1];
+						end_color_span[2] = current_color_V3[2];
 					}
 
 					deltax = ceil(start_span[0]) - start_span[0];
@@ -791,6 +817,12 @@ int GzRender::GzPutTriangle(int numParts, GzToken* nameList, GzPointer* valueLis
 							b = ctoi(C[0][2]);
 						}
 
+						else if (interp_mode == GZ_COLOR) {
+							r = ctoi(C[0][0]);
+							g = ctoi(C[1][1]);
+							b = ctoi(C[2][2]);
+						}
+
 						GzPut(x, y, r, g, b, 1, z);
 
 						deltax = 1;
@@ -806,6 +838,14 @@ int GzRender::GzPutTriangle(int numParts, GzToken* nameList, GzPointer* valueLis
 					current_V3[0] = current_V3[0] + (slopex_V3 * deltay);
 					current_V3[1] = current_V3[1] + deltay;
 					current_V3[2] = current_V3[2] + (slopez_V3 * deltay);
+
+					current_color[0] += slopeRy * deltay;
+					current_color[1] += slopeGy * deltay;
+					current_color[2] += slopeBy * deltay;
+
+					current_color_V3[0] += slopeRy_V3 * deltay;
+					current_color_V3[1] += slopeGy_V3 * deltay;
+					current_color_V3[2] += slopeBy_V3 * deltay;
 				}
 				//Swapping edges
 
@@ -862,6 +902,12 @@ int GzRender::GzPutTriangle(int numParts, GzToken* nameList, GzPointer* valueLis
 							r = ctoi(C[0][0]);
 							g = ctoi(C[0][1]);
 							b = ctoi(C[0][2]);
+						}
+
+						else if (interp_mode == GZ_COLOR) {
+							r = ctoi(C[0][0]);
+							g = ctoi(C[1][1]);
+							b = ctoi(C[2][2]);
 						}
 
 						GzPut(x, y, r, g, b, 1, z);
