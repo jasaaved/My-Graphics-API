@@ -739,7 +739,13 @@ int GzRender::GzPutTriangle(int numParts, GzToken* nameList, GzPointer* valueLis
 			float edge1, edge2, edge3;
 			float edge1_A, edge1_B, edge1_C, edge2_A, edge2_B, edge2_C, edge3_A, edge3_B, edge3_C;
 			float Z_interpolated, Z_A, Z_B, Z_C, Z_D, Z_v1_v2, Z_v1_v3;
-			float edge1x, edge1y, edge1z, edge2x, edge2y, edge2z, edge1Color, edge2Color;
+			float edge1x, edge1y, edge1z, edge2x, edge2y, edge2z,
+				edge1redColor, edge2redColor, red_A, red_B, red_C, red_D,
+				edge1greenColor, edge2greenColor, green_A, green_B, green_C, green_D,
+				edge1blueColor, edge2blueColor, blue_A, blue_B, blue_C, blue_D,
+				edge1normalx, edge2normalx, normalx_A, normalx_B, normalx_C, normalx_D,
+				edge1normaly, edge2normaly, normaly_A, normaly_B, normaly_C, normaly_D,
+				edge1normalz, edge2normalz, normalz_A, normalz_B, normalz_C, normalz_D;
 
 			edge1x = V2[0] - V1[0];
 			edge1y = V2[1] - V1[1];
@@ -766,6 +772,62 @@ int GzRender::GzPutTriangle(int numParts, GzToken* nameList, GzPointer* valueLis
 			Z_B = edge1z * edge2x - edge1x * edge2z;
 			Z_C = edge1x * edge2y - edge1y * edge2x;
 			Z_D = -(Z_A * V1[0] + Z_B * V1[1] + Z_C * V1[2]);
+
+			if (interp_mode == GZ_COLOR) {
+
+				edge1redColor = C[1][0] - C[0][0];
+				edge2redColor = C[2][0] - C[0][0];
+
+				red_A = edge1y * edge2redColor - edge1redColor * edge2y;
+				red_B = edge1redColor * edge2x - edge1x * edge2redColor;
+				red_C = edge1x * edge2y - edge1y * edge2x;
+				red_D = -(red_A * V1[0] + red_B * V1[1] + red_C * C[0][0]);
+
+
+				edge1greenColor = C[1][1] - C[0][1];
+				edge2greenColor = C[2][1] - C[0][1];
+
+				green_A = edge1y * edge2greenColor - edge1greenColor * edge2y;
+				green_B = edge1greenColor * edge2x - edge1x * edge2greenColor;
+				green_C = red_C;
+				green_D = -(green_A * V1[0] + green_B * V1[1] + green_C * C[0][1]);
+
+				edge1blueColor = C[1][2] - C[0][2];
+				edge2blueColor = C[2][2] - C[0][2];
+
+				blue_A = edge1y * edge2blueColor - edge1blueColor * edge2y;
+				blue_B = edge1blueColor * edge2x - edge1x * edge2blueColor;
+				blue_C = red_C;
+				blue_D = -(blue_A * V1[0] + blue_B * V1[1] + blue_C * C[0][2]);
+
+			}
+
+			if (interp_mode == GZ_NORMALS) {
+
+				edge1normalx = normals[1][0] - normals[0][0];
+				edge2normalx = normals[2][0] - normals[0][0];
+
+				normalx_A = edge1y * edge2normalx - edge1normalx * edge2y;
+				normalx_B = edge1normalx * edge2x - edge1x * edge2normalx;
+				normalx_C = edge1x * edge2y - edge1y * edge2x;
+				normalx_D = -(normalx_A * V1[0] + normalx_B * V1[1] + normalx_C * normals[0][0]);
+
+				edge1normaly = normals[1][1] - normals[0][1];
+				edge2normaly = normals[2][1] - normals[0][1];
+
+				normaly_A = edge1y * edge2normaly - edge1normaly * edge2y;
+				normaly_B = edge1normaly * edge2x - edge1x * edge2normaly;
+				normaly_C = normalx_C;
+				normaly_D = -(normaly_A * V1[0] + normaly_B * V1[1] + normaly_C * normals[0][1]);
+
+				edge1normalz = normals[1][2] - normals[0][2];
+				edge2normalz = normals[2][2] - normals[0][2];
+
+				normalz_A = edge1y * edge2normalz - edge1normalz * edge2y;
+				normalz_B = edge1normalz * edge2x - edge1x * edge2normalz;
+				normalz_C = normalx_C;
+				normalz_D = -(normalz_A * V1[0] + normalz_B * V1[1] + normalz_C * normals[0][2]);
+			}
 
 			float y_min, y_max, x_min, x_max;
 			int r, g, b, z;
@@ -802,7 +864,7 @@ int GzRender::GzPutTriangle(int numParts, GzToken* nameList, GzPointer* valueLis
 
 					if (((edge1 > 0 && edge2 > 0 && edge3 > 0 && Z_C != 0) || (edge1 < 0 && edge2 < 0 && edge3 < 0 && Z_C != 0) || (edge1 == 0 || edge2 == 0 || edge3 == 0))) {
 
-						Z_interpolated = -1.0 * (Z_A * i + Z_B * j + Z_D) / Z_C;
+						Z_interpolated = -(Z_A * i + Z_B * j + Z_D) / Z_C;
 						z = round(Z_interpolated);
 
 						if (z >= 0) {
@@ -815,92 +877,25 @@ int GzRender::GzPutTriangle(int numParts, GzToken* nameList, GzPointer* valueLis
 
 							if (interp_mode == GZ_COLOR) {
 
-							
-								float redZ1 = C[1][0] - C[0][0];
-								float redZ2 = C[2][0] - C[0][0];
-								float redPlaneA = (edge1y * redZ2) - (redZ1 * edge2y);
-								float redPlaneB = -((edge1x * redZ2) - (redZ1 * edge2x));
-								float redPlaneC = (edge1x *edge2y) - (edge1y * edge2x);
-								float redPlaneD = -1.0f * (redPlaneA * vertices[0][0] + redPlaneB * vertices[0][1] + redPlaneC * C[0][0]);
-
-							
-								float greenX1 = vertices[1][0] - vertices[0][0];
-								float greenY1 = vertices[1][1] - vertices[0][1];
-								float greenZ1 = C[1][1] - C[0][1];
-								float greenX2 = vertices[2][0] - vertices[0][0];
-								float greenY2 = vertices[2][1] - vertices[0][1];
-								float greenZ2 = C[2][1] - C[0][1];
-								float greenPlaneA = (greenY1 * greenZ2) - (greenZ1 * greenY2);
-								float greenPlaneB = -((greenX1 * greenZ2) - (greenZ1 * greenX2));
-								float greenPlaneC = (greenX1 * greenY2) - (greenY1 * greenX2);
-								float greenPlaneD = -1.0f * (greenPlaneA * vertices[0][0] + greenPlaneB * vertices[0][1] + greenPlaneC * C[0][1]);
-
-								// Interpolate Blue:
-								float blueX1 = vertices[1][0] - vertices[0][0];
-								float blueY1 = vertices[1][1] - vertices[0][1];
-								float blueZ1 = C[1][2] - C[0][2];
-								float blueX2 = vertices[2][0] - vertices[0][0];
-								float blueY2 = vertices[2][1] - vertices[0][1];
-								float blueZ2 = C[2][2] - C[0][2];
-								float bluePlaneA = (blueY1 * blueZ2) - (blueZ1 * blueY2);
-								float bluePlaneB = -((blueX1 * blueZ2) - (blueZ1 * blueX2));
-								float bluePlaneC = (blueX1 * blueY2) - (blueY1 * blueX2);
-								float bluePlaneD = -1.0f * (bluePlaneA * vertices[0][0] + bluePlaneB * vertices[0][1] + bluePlaneC * C[0][2]);
-
-								if (redPlaneC * greenPlaneC * bluePlaneC != 0) {
-									interpolated_color[0] = -1.0f * (redPlaneA * (float)i + redPlaneB * (float)j + redPlaneD) / redPlaneC;
-									interpolated_color[1] = -1.0f * (greenPlaneA * (float)i + greenPlaneB * (float)j + greenPlaneD) / greenPlaneC;
-									interpolated_color[2] = -1.0f * (bluePlaneA * (float)i + bluePlaneB * (float)j + bluePlaneD) / bluePlaneC;
+								if (red_C != 0 && green_C != 0 && blue_C != 0) {
+									interpolated_color[0] = -(red_A * i + red_B* j + red_D) / red_C;
+									interpolated_color[1] = -(green_A * i + green_B * j + green_D) / green_C;
+									interpolated_color[2] = -(blue_A * i + blue_B * j + blue_D) / blue_C;
 
 									r = ctoi(interpolated_color[0]);
 									g = ctoi(interpolated_color[1]);
 									b = ctoi(interpolated_color[2]);
 								}
+
 							}
 
 							if (interp_mode == GZ_NORMALS) {
-								// Interpolate normalX:
-								float normalX_X1 = vertices[1][0] - vertices[0][0];
-								float normalX_Y1 = vertices[1][1] - vertices[0][1];
-								float normalX_Z1 = normals[1][0] - normals[0][0];
-								float normalX_X2 = vertices[2][0] - vertices[0][0];
-								float normalX_Y2 = vertices[2][1] - vertices[0][1];
-								float normalX_Z2 = normals[2][0] - normals[0][0];
-								float normalX_PlaneA = (normalX_Y1 * normalX_Z2) - (normalX_Z1 * normalX_Y2);
-								float normalX_PlaneB = -((normalX_X1 * normalX_Z2) - (normalX_Z1 * normalX_X2));
-								float normalX_PlaneC = (normalX_X1 * normalX_Y2) - (normalX_Y1 * normalX_X2);
-								float normalX_PlaneD = -1.0f * (normalX_PlaneA * vertices[0][0] + normalX_PlaneB * vertices[0][1] + normalX_PlaneC * normals[0][0]);
+								
+								if (normalx_C != 0 && normaly_C != 0 && normalz_C != 0) {
 
-								// Interpolate normalY:
-								float normalY_X1 = vertices[1][0] - vertices[0][0];
-								float normalY_Y1 = vertices[1][1] - vertices[0][1];
-								float normalY_Z1 = normals[1][1] - normals[0][1];
-								float normalY_X2 = vertices[2][0] - vertices[0][0];
-								float normalY_Y2 = vertices[2][1] - vertices[0][1];
-								float normalY_Z2 = normals[2][1] - normals[0][1];
-								float normalY_PlaneA = (normalY_Y1 * normalY_Z2) - (normalY_Z1 * normalY_Y2);
-								float normalY_PlaneB = -((normalY_X1 * normalY_Z2) - (normalY_Z1 * normalY_X2));
-								float normalY_PlaneC = (normalY_X1 * normalY_Y2) - (normalY_Y1 * normalY_X2);
-								float normalY_PlaneD = -1.0f * (normalY_PlaneA * vertices[0][0] + normalY_PlaneB * vertices[0][1] + normalY_PlaneC * normals[0][1]);
-
-								// Interpolate normalZ:
-								float normalZ_X1 = vertices[1][0] - vertices[0][0];
-								float normalZ_Y1 = vertices[1][1] - vertices[0][1];
-								float normalZ_Z1 = normals[1][2] - normals[0][2];
-								float normalZ_X2 = vertices[2][0] - vertices[0][0];
-								float normalZ_Y2 = vertices[2][1] - vertices[0][1];
-								float normalZ_Z2 = normals[2][2] - normals[0][2];
-								float normalZ_PlaneA = (normalZ_Y1 * normalZ_Z2) - (normalZ_Z1 * normalZ_Y2);
-								float normalZ_PlaneB = -((normalZ_X1 * normalZ_Z2) - (normalZ_Z1 * normalZ_X2));
-								float normalZ_PlaneC = (normalZ_X1 * normalZ_Y2) - (normalZ_Y1 * normalZ_X2);
-								float normalZ_PlaneD = -1.0f * (normalZ_PlaneA * vertices[0][0] + normalZ_PlaneB * vertices[0][1] + normalZ_PlaneC * normals[0][2]);
-
-								if (normalX_PlaneC * normalY_PlaneC * normalZ_PlaneC != 0) {
-
-									interpolated_normal[0] = -1.0f * (normalX_PlaneA * (float)i + normalX_PlaneB * (float)j + normalX_PlaneD) / normalX_PlaneC;
-									interpolated_normal[1] = -1.0f * (normalY_PlaneA * (float)i + normalY_PlaneB * (float)j + normalY_PlaneD) / normalY_PlaneC;
-									interpolated_normal[2] = -1.0f * (normalZ_PlaneA * (float)i + normalZ_PlaneB * (float)j + normalZ_PlaneD) / normalZ_PlaneC;
-
+									interpolated_normal[0] = -(normalx_A * i + normalx_B * j + normalx_D) / normalx_C;
+									interpolated_normal[1] = -(normaly_A * i + normaly_B * j + normaly_D) / normaly_C;
+									interpolated_normal[2] = -(normalz_A * i + normalz_B * j + normalz_D) / normalz_C;
 
 									for (int j = 0; j < numlights; j++) {
 
