@@ -630,10 +630,15 @@ int GzRender::GzPutTriangle(int numParts, GzToken* nameList, GzPointer* valueLis
 			if (vertices[0][2] >= 0 && vertices[1][2] >= 0 && vertices[2][2] >= 0) {
 
 				GzColor C[3], specular[3], diffuse[3], ambient[3];
+				GzColor C_N, specular_N, diffuse_N, ambient_N;
 				memset(C, 0, sizeof(C));
 				memset(specular, 0, sizeof(specular));
 				memset(diffuse, 0, sizeof(diffuse));
 				memset(ambient, 0, sizeof(ambient));
+				memset(C_N, 0, sizeof(C_N));
+				memset(specular_N, 0, sizeof(specular_N));
+				memset(diffuse_N, 0, sizeof(diffuse_N));
+				memset(ambient_N, 0, sizeof(ambient_N));
 				GzCoord E = { 0,0,-1 };
 				GzCoord R;
 				float RdotE, NdotL, NdotE;
@@ -725,29 +730,46 @@ int GzRender::GzPutTriangle(int numParts, GzToken* nameList, GzPointer* valueLis
 				GzCoord current_V3 = { V1[0], V1[1], V1[2] };
 				GzColor current_color = { C[0][0], C[0][1], C[0][2] };
 				GzColor current_color_V3 = { C[0][0], C[0][1], C[0][2] };
+				GzCoord current_normal = { normals[0][0], normals[0][1], normals[0][2] };
+				GzCoord current_normal_V3 = { normals[0][0], normals[0][1], normals[0][2] };
 				char edge;
-				float slopex, slopez, slopex_V3, slopez_V3, slopez_span, deltay, deltax, slopeRy, 
-					slopeGy, slopeBy, slopeRy_V3, slopeGy_V3, slopeBy_V3, slopeRx, slopeGx, slopeBx;
+				float slopex, slopez, slopex_V3, slopez_V3, slopez_span, deltay, deltax,
+					slopeRy, slopeGy, slopeBy, slopeRy_V3, slopeGy_V3, slopeBy_V3, slopeRx, slopeGx, slopeBx,
+					slopeNxy, slopeNyy, slopeNzy, slopeNxy_V3, slopeNyy_V3, slopeNzy_V3, slopeNxx, slopeNyx, slopeNzx;
 				int x, y, z;
 				GzIntensity r, g, b;
 				float start_span[2], end_span[2], current_span[2];
 				GzColor start_color_span, end_color_span, current_span_color;
+				GzCoord start_normal_span, end_normal_span, current_span_normal, normalized_current_span_normal;
 				int made_switch = 0;
 
 				slopex = (end[0] - start[0]) / (end[1] - start[1]);
 				slopez = (end[2] - start[2]) / (end[1] - start[1]);
 				deltay = ceil(start[1]) - start[1];
+				
+				if (interp_mode == GZ_COLOR) {
+					slopeRy = (C[1][0] - C[0][0]) / (end[1] - start[1]);
+					slopeGy = (C[1][1] - C[0][1]) / (end[1] - start[1]);
+					slopeBy = (C[1][2] - C[0][2]) / (end[1] - start[1]);
+					slopeRy_V3 = (C[2][0] - C[0][0]) / (end_V3[1] - start[1]);
+					slopeGy_V3 = (C[2][1] - C[0][1]) / (end_V3[1] - start[1]);
+					slopeBy_V3 = (C[2][2] - C[0][2]) / (end_V3[1] - start[1]);
+				}
 
-				slopeRy = (C[1][0] - C[0][0]) / (end[1] - start[1]);
-				slopeGy = (C[1][1] - C[0][1]) / (end[1] - start[1]);
-				slopeBy = (C[1][2] - C[0][2]) / (end[1] - start[1]);
+				if (interp_mode == GZ_NORMAL) {
+					slopeNxy = (normals[1][0] - normals[0][0]) / (end[1] - start[1]);
+					slopeNyy = (normals[1][1] - normals[0][1]) / (end[1] - start[1]);
+					slopeNzy = (normals[1][2] - normals[0][2]) / (end[1] - start[1]);
+					slopeNxy_V3 = (normals[2][0] - normals[0][0]) / (end_V3[1] - start[1]);
+					slopeNyy_V3 = (normals[2][1] - normals[0][1]) / (end_V3[1] - start[1]);
+					slopeNzy_V3 = (normals[2][2] - normals[0][2]) / (end_V3[1] - start[1]);
+				}
+				
 
 				slopex_V3 = (end_V3[0] - start[0]) / (end_V3[1] - start[1]);
 				slopez_V3 = (end_V3[2] - start[2]) / (end_V3[1] - start[1]);
 
-				slopeRy_V3 = (C[2][0] - C[0][0]) / (end_V3[1] - start[1]);
-				slopeGy_V3 = (C[2][1] - C[0][1]) / (end_V3[1] - start[1]);
-				slopeBy_V3 = (C[2][2] - C[0][2]) / (end_V3[1] - start[1]);
+				
 
 				if (slopex >= slopex_V3) {
 					edge = 'R';
@@ -765,6 +787,27 @@ int GzRender::GzPutTriangle(int numParts, GzToken* nameList, GzPointer* valueLis
 				current_V3[1] = current_V3[1] + deltay;
 				current_V3[2] = current_V3[2] + (slopez_V3 * deltay);
 
+				if (interp_mode == GZ_COLOR) {
+					current_color[0] += slopeRy * deltay;
+					current_color[1] += slopeGy * deltay;
+					current_color[2] += slopeBy * deltay;
+
+					current_color_V3[0] += slopeRy_V3 * deltay;
+					current_color_V3[1] += slopeGy_V3 * deltay;
+					current_color_V3[2] += slopeBy_V3 * deltay;
+				}
+
+				if (interp_mode == GZ_NORMAL) {
+					current_normal[0] += slopeNxy * deltay;
+					current_normal[1] += slopeNyy * deltay;
+					current_normal[2] += slopeNzy * deltay;
+
+					current_normal_V3[0] += slopeNxy_V3 * deltay;
+					current_normal_V3[1] += slopeNyy_V3 * deltay;
+					current_normal_V3[2] += slopeNzy_V3 * deltay;
+				}
+
+				deltay = 1;
 
 				while (current[1] <= end[1]) {
 
@@ -777,15 +820,29 @@ int GzRender::GzPutTriangle(int numParts, GzToken* nameList, GzPointer* valueLis
 						end_span[0] = current[0];
 						end_span[1] = current[2];
 
-						start_color_span[0] = current_color_V3[0];
-						start_color_span[1] = current_color_V3[1];
-						start_color_span[2] = current_color_V3[2];
-						current_span_color[0] = start_color_span[0];
-						current_span_color[1] = start_color_span[1];
-						current_span_color[2] = start_color_span[2];
-						end_color_span[0] = current_color[0];
-						end_color_span[1] = current_color[1];
-						end_color_span[2] = current_color[2];
+						if (interp_mode == GZ_COLOR) {
+							start_color_span[0] = current_color_V3[0];
+							start_color_span[1] = current_color_V3[1];
+							start_color_span[2] = current_color_V3[2];
+							current_span_color[0] = start_color_span[0];
+							current_span_color[1] = start_color_span[1];
+							current_span_color[2] = start_color_span[2];
+							end_color_span[0] = current_color[0];
+							end_color_span[1] = current_color[1];
+							end_color_span[2] = current_color[2];
+						}
+
+						if (interp_mode == GZ_NORMAL) {
+							start_normal_span[0] = current_normal_V3[0];
+							start_normal_span[1] = current_normal_V3[1];
+							start_normal_span[2] = current_normal_V3[2];
+							current_span_normal[0] = start_normal_span[0];
+							current_span_normal[1] = start_normal_span[1];
+							current_span_normal[2] = start_normal_span[2];
+							end_normal_span[0] = current_normal[0];
+							end_normal_span[1] = current_normal[1];
+							end_normal_span[2] = current_normal[2];
+						}
 					}
 
 					else {
@@ -796,21 +853,47 @@ int GzRender::GzPutTriangle(int numParts, GzToken* nameList, GzPointer* valueLis
 						end_span[0] = current_V3[0];
 						end_span[1] = current_V3[2];
 
-						start_color_span[0] = current_color[0];
-						start_color_span[1] = current_color[1];
-						start_color_span[2] = current_color[2];
-						current_span_color[0] = start_color_span[0];
-						current_span_color[1] = start_color_span[1];
-						current_span_color[2] = start_color_span[2];
-						end_color_span[0] = current_color_V3[0];
-						end_color_span[1] = current_color_V3[1];
-						end_color_span[2] = current_color_V3[2];
+						if (interp_mode == GZ_COLOR) {
+							start_color_span[0] = current_color[0];
+							start_color_span[1] = current_color[1];
+							start_color_span[2] = current_color[2];
+							current_span_color[0] = start_color_span[0];
+							current_span_color[1] = start_color_span[1];
+							current_span_color[2] = start_color_span[2];
+							end_color_span[0] = current_color_V3[0];
+							end_color_span[1] = current_color_V3[1];
+							end_color_span[2] = current_color_V3[2];
+						}
+
+						if (interp_mode == GZ_NORMAL) {
+							start_normal_span[0] = current_normal[0];
+							start_normal_span[1] = current_normal[1];
+							start_normal_span[2] = current_normal[2];
+							current_span_normal[0] = start_normal_span[0];
+							current_span_normal[1] = start_normal_span[1];
+							current_span_normal[2] = start_normal_span[2];
+							end_normal_span[0] = current_normal_V3[0];
+							end_normal_span[1] = current_normal_V3[1];
+							end_normal_span[2] = current_normal_V3[2];
+						}
 					}
 
 					deltax = ceil(start_span[0]) - start_span[0];
 					slopez_span = (end_span[1] - start_span[1]) / (end_span[0] - start_span[0]);
 					current_span[0] = current_span[0] + deltax;
 					current_span[1] = current_span[1] + (slopez_span * deltax);
+
+					if (interp_mode == GZ_COLOR) {
+						slopeRx = (end_color_span[0] - start_color_span[0]) / (end_span[0] - start_span[0]);
+						slopeGx = (end_color_span[1] - start_color_span[1]) / (end_span[0] - start_span[0]);
+						slopeBx = (end_color_span[2] - start_color_span[2]) / (end_span[0] - start_span[0]);
+					}
+
+					if (interp_mode == GZ_NORMAL) {
+						slopeNxx = (end_normal_span[0] - start_normal_span[0]) / (end_span[0] - start_span[0]);
+						slopeNyx = (end_normal_span[1] - start_normal_span[1]) / (end_span[0] - start_span[0]);
+						slopeNzx = (end_normal_span[2] - start_normal_span[2]) / (end_span[0] - start_span[0]);
+					}
 
 					while (current_span[0] <= end_span[0]) {
 
@@ -824,10 +907,7 @@ int GzRender::GzPutTriangle(int numParts, GzToken* nameList, GzPointer* valueLis
 							b = ctoi(C[0][2]);
 						}
 
-						else if (interp_mode == GZ_COLOR) {
-							slopeRx = (end_color_span[0] - current_span_color[0]) / (end_span[0] - current_span[0]);
-							slopeGx = (end_color_span[1] - current_span_color[1]) / (end_span[0] - current_span[0]);
-							slopeBx = (end_color_span[2] - current_span_color[2]) / (end_span[0] - current_span[0]);
+						if (interp_mode == GZ_COLOR) {
 
 							r = ctoi(slopeRx * deltax + current_span_color[0]);
 							g = ctoi(slopeGx * deltax + current_span_color[1]);
@@ -838,6 +918,70 @@ int GzRender::GzPutTriangle(int numParts, GzToken* nameList, GzPointer* valueLis
 							current_span_color[2] += slopeBx * deltax;
 						}
 
+						if (interp_mode == GZ_NORMAL) {
+							for (int i = 0; i < 3; i++) {
+								normalized_current_span_normal[i] = current_span_normal[i];
+							}
+							normalize(normalized_current_span_normal, 3);
+							for (int j = 0; j < numlights; j++) {
+								NdotL = dot_product(normalized_current_span_normal, lights[j].direction, 3);
+								NdotE = dot_product(normalized_current_span_normal, E, 3);
+
+								if ((NdotL > 0 && NdotE > 0) || (NdotL < 0 && NdotE < 0)) {
+
+									for (int k = 0; k < 3; k++) {
+										R[k] = 2.0 * NdotL * normalized_current_span_normal[k] - lights[j].direction[k];
+									}
+
+									normalize(R, 3);
+									RdotE = dot_product(R, E, 3);
+
+									if (RdotE < 0) {
+										RdotE = 0;
+									}
+
+									else if (RdotE > 1) {
+										RdotE = 1;
+									}
+
+									for (int k = 0; k < 3; k++) {
+										specular_N[k] += Ks[k] * pow(RdotE, spec) * lights[j].color[k];
+
+										if (NdotE < 0 || NdotL < 0) {
+											for (int m = 0; m < 3; m++) {
+												normalized_current_span_normal[m] *= -1;
+											}
+											NdotL = dot_product(normalized_current_span_normal, lights[j].direction, 3);
+										}
+
+										diffuse_N[k] += Kd[k] * NdotL * lights[j].color[k];
+									}
+
+								}
+							}
+
+							for (int j = 0; j < 3; j++) {
+								ambient_N[j] += Ka[j] * ambientlight.color[j];
+							}
+							for (int j = 0; j < 3; j++) {
+								C_N[j] = specular_N[j] + diffuse_N[j] + ambient_N[j];
+
+								if (C_N[j] < 0) {
+									C_N[j] = 0;
+								}
+
+								else if (C_N[j] > 1.0) {
+									C_N[j] = 1.0;
+								}
+							}
+							r = ctoi(C_N[0]);
+							g = ctoi(C_N[1]);
+							b = ctoi(C_N[2]);
+							current_span_normal[0] += slopeNxx * deltax;
+							current_span_normal[1] += slopeNyx * deltax;
+							current_span_normal[2] += slopeNzx * deltax;
+						}
+
 						GzPut(x, y, r, g, b, 1, z);
 
 						deltax = 1;
@@ -845,7 +989,7 @@ int GzRender::GzPutTriangle(int numParts, GzToken* nameList, GzPointer* valueLis
 						current_span[1] = current_span[1] + (slopez_span * deltax);
 					}
 
-					deltay = 1;
+					
 					current[0] = current[0] + (slopex * deltay);
 					current[1] = current[1] + deltay;
 					current[2] = current[2] + (slopez * deltay);
@@ -854,16 +998,28 @@ int GzRender::GzPutTriangle(int numParts, GzToken* nameList, GzPointer* valueLis
 					current_V3[1] = current_V3[1] + deltay;
 					current_V3[2] = current_V3[2] + (slopez_V3 * deltay);
 
-					current_color[0] += slopeRy * deltay;
-					current_color[1] += slopeGy * deltay;
-					current_color[2] += slopeBy * deltay;
+					if (interp_mode == GZ_COLOR) {
+						current_color[0] += slopeRy * deltay;
+						current_color[1] += slopeGy * deltay;
+						current_color[2] += slopeBy * deltay;
 
-					current_color_V3[0] += slopeRy_V3 * deltay;
-					current_color_V3[1] += slopeGy_V3 * deltay;
-					current_color_V3[2] += slopeBy_V3 * deltay;
+						current_color_V3[0] += slopeRy_V3 * deltay;
+						current_color_V3[1] += slopeGy_V3 * deltay;
+						current_color_V3[2] += slopeBy_V3 * deltay;
+					}
+
+					if (interp_mode == GZ_NORMAL) {
+						current_normal[0] += slopeNxy * deltay;
+						current_normal[1] += slopeNyy * deltay;
+						current_normal[2] += slopeNzy * deltay;
+
+						current_normal_V3[0] += slopeNxy_V3 * deltay;
+						current_normal_V3[1] += slopeNyy_V3 * deltay;
+						current_normal_V3[2] += slopeNzy_V3 * deltay;
+					}
 				}
 				//Swapping edges
-
+				/*
 				start[0] = V2[0];
 				start[1] = V2[1];
 				start[2] = V2[2];
@@ -876,18 +1032,37 @@ int GzRender::GzPutTriangle(int numParts, GzToken* nameList, GzPointer* valueLis
 				slopex = (end[0] - start[0]) / (end[1] - start[1]);
 				slopez = (end[2] - start[2]) / (end[1] - start[1]);
 
-				slopeRy = (C[2][0] - C[1][0]) / (end[1] - start[1]);
-				slopeGy = (C[2][1] - C[1][1]) / (end[1] - start[1]);
-				slopeBy = (C[2][2] - C[1][2]) / (end[1] - start[1]);
-
-				current_color[0] = C[1][0];
-				current_color[1] = C[1][1];
-				current_color[2] = C[1][2];
+				if (interp_mode == GZ_COLOR) {
+					current_color[0] = C[1][0];
+					current_color[1] = C[1][1];
+					current_color[2] = C[1][2];
+					slopeRy = (C[2][0] - C[1][0]) / (end[1] - start[1]);
+					slopeGy = (C[2][1] - C[1][1]) / (end[1] - start[1]);
+					slopeBy = (C[2][2] - C[1][2]) / (end[1] - start[1]);
+				}
+				
+				if (interp_mode == GZ_NORMAL) {
+					current_normal[0] = normals[1][0];
+					current_normal[1] = normals[1][1];
+					current_normal[2] = normals[1][2];
+					slopeNxy = (normals[2][0] - normals[1][0]) / (end[1] - start[1]);
+					slopeNyy = (normals[2][1] - normals[1][1]) / (end[1] - start[1]);
+					slopeNzy = (normals[2][2] - normals[1][2]) / (end[1] - start[1]);
+				}
 
 				deltay = ceil(start[1]) - start[1];
 				current[0] = current[0] + (slopex * deltay);
 				current[1] = current[1] + deltay;
 				current[2] = current[2] + (slopez * deltay);
+
+				if (interp_mode == GZ_COLOR) {
+					current_color[0] += slopeRy * deltay;
+					current_color[1] += slopeGy * deltay;
+					current_color[2] += slopeBy * deltay;
+				}
+
+				deltay = 1;
+
 				while (current[1] <= end[1]) {
 
 					//SPAN
@@ -899,15 +1074,29 @@ int GzRender::GzPutTriangle(int numParts, GzToken* nameList, GzPointer* valueLis
 						end_span[0] = current[0];
 						end_span[1] = current[2];
 
-						start_color_span[0] = current_color_V3[0];
-						start_color_span[1] = current_color_V3[1];
-						start_color_span[2] = current_color_V3[2];
-						current_span_color[0] = start_color_span[0];
-						current_span_color[1] = start_color_span[1];
-						current_span_color[2] = start_color_span[2];
-						end_color_span[0] = current_color[0];
-						end_color_span[1] = current_color[1];
-						end_color_span[2] = current_color[2];
+						if (interp_mode == GZ_COLOR) {
+							start_color_span[0] = current_color_V3[0];
+							start_color_span[1] = current_color_V3[1];
+							start_color_span[2] = current_color_V3[2];
+							current_span_color[0] = start_color_span[0];
+							current_span_color[1] = start_color_span[1];
+							current_span_color[2] = start_color_span[2];
+							end_color_span[0] = current_color[0];
+							end_color_span[1] = current_color[1];
+							end_color_span[2] = current_color[2];
+						}
+
+						if (interp_mode == GZ_NORMAL) {
+							start_normal_span[0] = current_normal_V3[0];
+							start_normal_span[1] = current_normal_V3[1];
+							start_normal_span[2] = current_normal_V3[2];
+							current_span_normal[0] = start_normal_span[0];
+							current_span_normal[1] = start_normal_span[1];
+							current_span_normal[2] = start_normal_span[2];
+							end_normal_span[0] = current_normal[0];
+							end_normal_span[1] = current_normal[1];
+							end_normal_span[2] = current_normal[2];
+						}
 					}
 
 					else {
@@ -918,21 +1107,47 @@ int GzRender::GzPutTriangle(int numParts, GzToken* nameList, GzPointer* valueLis
 						end_span[0] = current_V3[0];
 						end_span[1] = current_V3[2];
 
-						start_color_span[0] = current_color[0];
-						start_color_span[1] = current_color[1];
-						start_color_span[2] = current_color[2];
-						current_span_color[0] = start_color_span[0];
-						current_span_color[1] = start_color_span[1];
-						current_span_color[2] = start_color_span[2];
-						end_color_span[0] = current_color_V3[0];
-						end_color_span[1] = current_color_V3[1];
-						end_color_span[2] = current_color_V3[2];
+						if (interp_mode == GZ_COLOR) {
+							start_color_span[0] = current_color[0];
+							start_color_span[1] = current_color[1];
+							start_color_span[2] = current_color[2];
+							current_span_color[0] = start_color_span[0];
+							current_span_color[1] = start_color_span[1];
+							current_span_color[2] = start_color_span[2];
+							end_color_span[0] = current_color_V3[0];
+							end_color_span[1] = current_color_V3[1];
+							end_color_span[2] = current_color_V3[2];
+						}
+
+						if (interp_mode == GZ_NORMAL) {
+							start_normal_span[0] = current_normal[0];
+							start_normal_span[1] = current_normal[1];
+							start_normal_span[2] = current_normal[2];
+							current_span_normal[0] = start_normal_span[0];
+							current_span_normal[1] = start_normal_span[1];
+							current_span_normal[2] = start_normal_span[2];
+							end_normal_span[0] = current_normal_V3[0];
+							end_normal_span[1] = current_normal_V3[1];
+							end_normal_span[2] = current_normal_V3[2];
+						}
 					}
 
 					deltax = ceil(start_span[0]) - start_span[0];
 					slopez_span = (end_span[1] - start_span[1]) / (end_span[0] - start_span[0]);
 					current_span[0] = current_span[0] + deltax;
 					current_span[1] = current_span[1] + (slopez_span * deltax);
+
+					if (interp_mode == GZ_COLOR) {
+						slopeRx = (end_color_span[0] - start_color_span[0]) / (end_span[0] - start_span[0]);
+						slopeGx = (end_color_span[1] - start_color_span[1]) / (end_span[0] - start_span[0]);
+						slopeBx = (end_color_span[2] - start_color_span[2]) / (end_span[0] - start_span[0]);
+					}
+
+					if (interp_mode == GZ_NORMAL) {
+						slopeNxx = (end_normal_span[0] - start_normal_span[0]) / (end_span[0] - start_span[0]);
+						slopeNyx = (end_normal_span[1] - start_normal_span[1]) / (end_span[0] - start_span[0]);
+						slopeNzx = (end_normal_span[2] - start_normal_span[2]) / (end_span[0] - start_span[0]);
+					}
 
 					while (current_span[0] <= end_span[0]) {
 
@@ -946,10 +1161,7 @@ int GzRender::GzPutTriangle(int numParts, GzToken* nameList, GzPointer* valueLis
 							b = ctoi(C[0][2]);
 						}
 
-						else if (interp_mode == GZ_COLOR) {
-							slopeRx = (end_color_span[0] - current_span_color[0]) / (end_span[0] - current_span[0]);
-							slopeGx = (end_color_span[1] - current_span_color[1]) / (end_span[0] - current_span[0]);
-							slopeBx = (end_color_span[2] - current_span_color[2]) / (end_span[0] - current_span[0]);
+						if (interp_mode == GZ_COLOR) {
 
 							r = ctoi(slopeRx * deltax + current_span_color[0]);
 							g = ctoi(slopeGx * deltax + current_span_color[1]);
@@ -960,6 +1172,66 @@ int GzRender::GzPutTriangle(int numParts, GzToken* nameList, GzPointer* valueLis
 							current_span_color[2] += slopeBx * deltax;
 						}
 
+						if (interp_mode == GZ_NORMAL) {
+							for (int j = 0; j < numlights; j++) {
+								NdotL = dot_product(current_span_normal, lights[j].direction, 3);
+								NdotE = dot_product(current_span_normal, E, 3);
+
+								if ((NdotL > 0 && NdotE > 0) || (NdotL < 0 && NdotE < 0)) {
+
+									for (int k = 0; k < 3; k++) {
+										R[k] = 2.0 * NdotL * current_span_normal[k] - lights[j].direction[k];
+									}
+
+									normalize(R, 3);
+									RdotE = dot_product(R, E, 3);
+
+									if (RdotE < 0) {
+										RdotE = 0;
+									}
+
+									else if (RdotE > 1) {
+										RdotE = 1;
+									}
+
+									for (int k = 0; k < 3; k++) {
+										specular_N[k] += Ks[k] * pow(RdotE, spec) * lights[j].color[k];
+
+										if (NdotE < 0 || NdotL < 0) {
+											for (int m = 0; m < 3; m++) {
+												current_span_normal[m] *= -1;
+											}
+											NdotL = dot_product(current_span_normal, lights[j].direction, 3);
+										}
+
+										diffuse_N[k] += Kd[k] * NdotL * lights[j].color[k];
+									}
+
+								}
+							}
+
+							for (int j = 0; j < 3; j++) {
+								ambient_N[j] += Ka[j] * ambientlight.color[j];
+							}
+							for (int j = 0; j < 3; j++) {
+								C_N[j] = specular_N[j] + diffuse_N[j] + ambient_N[j];
+
+								if (C_N[j] < 0) {
+									C_N[j] = 0;
+								}
+
+								else if (C_N[j] > 1.0) {
+									C_N[j] = 1.0;
+								}
+							}
+							r = ctoi(C_N[0]);
+							g = ctoi(C_N[1]);
+							b = ctoi(C_N[2]);
+							current_span_normal[0] += slopeNxx * deltax;
+							current_span_normal[1] += slopeNyx * deltax;
+							current_span_normal[2] += slopeNzx * deltax;
+						}
+
 						GzPut(x, y, r, g, b, 1, z);
 
 						deltax = 1;
@@ -967,7 +1239,7 @@ int GzRender::GzPutTriangle(int numParts, GzToken* nameList, GzPointer* valueLis
 						current_span[1] = current_span[1] + (slopez_span * deltax);
 					}
 
-					deltay = 1;
+
 					current[0] = current[0] + (slopex * deltay);
 					current[1] = current[1] + deltay;
 					current[2] = current[2] + (slopez * deltay);
@@ -976,14 +1248,26 @@ int GzRender::GzPutTriangle(int numParts, GzToken* nameList, GzPointer* valueLis
 					current_V3[1] = current_V3[1] + deltay;
 					current_V3[2] = current_V3[2] + (slopez_V3 * deltay);
 
-					current_color[0] += slopeRy * deltay;
-					current_color[1] += slopeGy * deltay;
-					current_color[2] += slopeBy * deltay;
+					if (interp_mode == GZ_COLOR) {
+						current_color[0] += slopeRy * deltay;
+						current_color[1] += slopeGy * deltay;
+						current_color[2] += slopeBy * deltay;
 
-					current_color_V3[0] += slopeRy_V3 * deltay;
-					current_color_V3[1] += slopeGy_V3 * deltay;
-					current_color_V3[2] += slopeBy_V3 * deltay;
-				}
+						current_color_V3[0] += slopeRy_V3 * deltay;
+						current_color_V3[1] += slopeGy_V3 * deltay;
+						current_color_V3[2] += slopeBy_V3 * deltay;
+					}
+
+					if (interp_mode == GZ_NORMAL) {
+						current_normal[0] += slopeNxy * deltay;
+						current_normal[1] += slopeNyy * deltay;
+						current_normal[2] += slopeNzy * deltay;
+
+						current_normal_V3[0] += slopeNxy_V3 * deltay;
+						current_normal_V3[1] += slopeNyy_V3 * deltay;
+						current_normal_V3[2] += slopeNzy_V3 * deltay;
+					}
+				}*/
 			}
 		}
 

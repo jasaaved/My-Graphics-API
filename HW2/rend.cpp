@@ -240,7 +240,7 @@ int GzRender::GzPutTriangle(int	numParts, GzToken *nameList, GzPointer *valueLis
 			GzCoord current = { V1[0], V1[1], V1[2] };
 			GzCoord current_V3 = { V1[0], V1[1], V1[2] };
 			char edge;
-			float slopex, slopez, slopex_V3, slopez_V3, slopez_span, deltay, deltax;
+			double slopex, slopez, slopex_V3, slopez_V3, slopez_span, deltay, deltax;
 			int x, y, z;
 			GzIntensity r, g, b;
 			float start_span[2], end_span[2], current_span[2];
@@ -268,8 +268,8 @@ int GzRender::GzPutTriangle(int	numParts, GzToken *nameList, GzPointer *valueLis
 			current_V3[0] = current_V3[0] + (slopex_V3 * deltay);
 			current_V3[1] = current_V3[1] + deltay;
 			current_V3[2] = current_V3[2] + (slopez_V3 * deltay);
-
-			while (current[1] <= end[1]) {
+			deltay = 1;
+			while (current[1] <= V2[1]) {
 
 				//SPAN
 				if (edge == 'R') {
@@ -295,7 +295,7 @@ int GzRender::GzPutTriangle(int	numParts, GzToken *nameList, GzPointer *valueLis
 				current_span[0] = current_span[0] + deltax;
 				current_span[1] = current_span[1] + (slopez_span * deltax);
 
-				while (current_span[0] <= end_span[0]) {
+				while (current_span[0] <= floor(end_span[0])) {
 
 					x = std::ceil(current_span[0]);
 					y = std::ceil(current[1]);
@@ -304,6 +304,10 @@ int GzRender::GzPutTriangle(int	numParts, GzToken *nameList, GzPointer *valueLis
 					g = ctoi(flatcolor[1]);
 					b = ctoi(flatcolor[2]);
 
+					if (x == 88 && y == 227) {
+						int d = 1;
+					}
+
 					GzPut(x, y, r, g, b, 1, z);
 						
 					deltax = 1;
@@ -311,35 +315,14 @@ int GzRender::GzPutTriangle(int	numParts, GzToken *nameList, GzPointer *valueLis
 					current_span[1] = current_span[1] + (slopez_span * deltax);
 				}
 		
-				deltay = 1;
-				current[0] = current[0] + (slopex * deltay);
 				current[1] = current[1] + deltay;
-				current[2] = current[2] + (slopez * deltay);
+					current[0] += (slopex * deltay);
+					current[2] += (slopez * deltay);
+				
 
 				current_V3[0] = current_V3[0] + (slopex_V3 * deltay);
 				current_V3[1] = current_V3[1] + deltay;
 				current_V3[2] = current_V3[2] + (slopez_V3 * deltay);
-				/*
-				if (current[1] > end[1] && made_switch == 0) {
-					made_switch++;
-					
-					start[0] = V2[0];
-					start[1] = V2[1];
-					start[2] = V2[2];
-					current[0] = start[0];
-					current[1] = start[1];
-					current[2] = start[2];
-					end[0] = V3[0];
-					end[1] = V3[1];
-					end[2] = V3[2];
-					slopex = (end[0] - start[0]) / (end[1] - start[1]);
-					slopez = (end[2] - start[2]) / (end[1] - start[1]);
-
-					deltay = ceil(start[1]) - start[1];
-					current[0] = current[0] + (slopex * deltay);
-					current[1] = current[1] + deltay;
-					current[2] = current[2] + (slopez * deltay);
-				}*/
 			}
 			//Swapping edges
 			
@@ -359,7 +342,7 @@ int GzRender::GzPutTriangle(int	numParts, GzToken *nameList, GzPointer *valueLis
 			current[0] = current[0] + (slopex * deltay);
 			current[1] = current[1] + deltay;
 			current[2] = current[2] + (slopez * deltay); 
-			while (current[1] <= end[1]) {
+			while (current[1] <= V3[1]) {
 
 				//SPAN
 				if (edge == 'R') {

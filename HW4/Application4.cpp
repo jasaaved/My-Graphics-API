@@ -160,7 +160,7 @@ GzMatrix	rotateY =
 #if 0
         interpStyle = GZ_COLOR;         /* Gouraud shading */
 #else 
-        interpStyle = GZ_COLOR;       /* Phong shading */
+        interpStyle = GZ_NORMAL;       /* Phong shading */
 #endif
 
         valueListShader[1] = (GzPointer)&interpStyle;
