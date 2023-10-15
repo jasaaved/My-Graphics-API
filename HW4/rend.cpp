@@ -643,7 +643,7 @@ int GzRender::GzPutTriangle(int numParts, GzToken* nameList, GzPointer* valueLis
 			GzCoord R;
 			float RdotE, NdotL, NdotE;
 
-			//if GZ_FLAT color will only be calculated on the first vertex
+			//if GZ_FLAT color will only be calculated on the first vertex given from the file
 			int n;
 			if (interp_mode == GZ_FLAT) {
 				n = 1;
@@ -830,7 +830,7 @@ int GzRender::GzPutTriangle(int numParts, GzToken* nameList, GzPointer* valueLis
 			}
 
 			float y_min, y_max, x_min, x_max;
-			int r, g, b, z;
+			int r, g, b, x, y, z;
 
 			y_min = V1[1];
 			y_max = V1[1];
@@ -885,6 +885,7 @@ int GzRender::GzPutTriangle(int numParts, GzToken* nameList, GzPointer* valueLis
 									r = ctoi(interpolated_color[0]);
 									g = ctoi(interpolated_color[1]);
 									b = ctoi(interpolated_color[2]);
+
 								}
 
 							}
@@ -953,6 +954,7 @@ int GzRender::GzPutTriangle(int numParts, GzToken* nameList, GzPointer* valueLis
 									r = ctoi(C_N[0]);
 									g = ctoi(C_N[1]);
 									b = ctoi(C_N[2]);
+								
 									memset(specular_N, 0, sizeof(specular_N));
 									memset(diffuse_N, 0, sizeof(diffuse_N));
 									memset(ambient_N, 0, sizeof(ambient_N));
@@ -960,8 +962,9 @@ int GzRender::GzPutTriangle(int numParts, GzToken* nameList, GzPointer* valueLis
 
 							}
 						
-
-							GzPut(i, j, r, g, b, 1, z);
+							x = i;
+							y = j;
+							GzPut(x, y, r, g, b, 1, z);
 						}
 					}
 
