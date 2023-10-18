@@ -626,96 +626,43 @@ int GzRender::GzPutTriangle(int numParts, GzToken* nameList, GzPointer* valueLis
 					normals[i][j] = transformed_normals[i][j] / transformed_normals[i][3];
 				}
 			}
-			//Check for negative screen z vertex
-			if (vertices[0][2] >= 0 && vertices[1][2] >= 0 && vertices[2][2] >= 0) {
 
+
+
+			GzColor C[3], specular[3], diffuse[3], ambient[3];
+			GzColor C_N, specular_N, diffuse_N, ambient_N;
+			memset(C, 0, sizeof(C));
+			memset(specular, 0, sizeof(specular));
+			memset(diffuse, 0, sizeof(diffuse));
+			memset(ambient, 0, sizeof(ambient));
+			memset(C_N, 0, sizeof(C_N));
+			memset(specular_N, 0, sizeof(specular_N));
+			memset(diffuse_N, 0, sizeof(diffuse_N));
+			memset(ambient_N, 0, sizeof(ambient_N));
+			GzCoord E = { 0,0,-1 };
+			GzCoord R;
+			float RdotE, NdotL, NdotE;
+
+			//if GZ_FLAT color will only be calculated on the first vertex given from the file
+			int n;
+			if (interp_mode == GZ_FLAT) {
+				n = 1;
+			}
+
+			else {
+				n = 3;
 				sort_vertices(vertices, normals);
-				GzCoord V1 = { vertices[0][0], vertices[0][1],vertices[0][2] };
-				GzCoord V2 = { vertices[1][0], vertices[1][1],vertices[1][2] };
-				GzCoord V3 = { vertices[2][0], vertices[2][1],vertices[2][2] };
+			}
 
-				GzColor C, specular, diffuse, ambient;
-				memset(C, 0, sizeof(C));
-				memset(specular, 0, sizeof(specular));
-				memset(diffuse, 0, sizeof(diffuse));
-				memset(ambient, 0, sizeof(ambient));
-				GzCoord E = { 0,0,-1 };
-				GzCoord R;
-				float RdotE, NdotL, NdotE;
-				GzCoord normal_of_triangle;
 
-				float sumx = normals[0][0] + normals[1][0] + normals[2][0];
-				float sumy = normals[0][1] + normals[1][1] + normals[2][1];
-				float sumz = normals[0][2] + normals[1][2] + normals[2][2];
-				normal_of_triangle[0] = sumx / 3;
-				normal_of_triangle[1] = sumy / 3;
-				normal_of_triangle[2] = sumz / 3;
-				
-
-				for (int j = 0; j < numlights; j++) {
-					NdotL = dot_product(normal_of_triangle, lights[j].direction, 3);
-					NdotE = dot_product(normal_of_triangle, E, 3);
-
-					if ((NdotL > 0 && NdotE > 0) || (NdotL < 0 && NdotE < 0)) {
-
-						for (int k = 0; k < 3; k++) {
-							R[k] = 2.0 * NdotL * normal_of_triangle[k] - lights[j].direction[k];
-						}
-
-						normalize(R, 3);
-						RdotE = dot_product(R, E, 3);
-
-						if (RdotE < 0) {
-							RdotE = 0;
-						}
-
-						else if (RdotE > 1) {
-							RdotE = 1;
-						}
-
-						for (int k = 0; k < 3; k++) {
-							specular[k] += Ks[k] * pow(RdotE, spec) * lights[j].color[k];
-
-							if (NdotE < 0 || NdotL < 0) {
-								for (int m = 0; m < 3; m++) {
-									normal_of_triangle[m] *= -1;
-								}
-								NdotL = dot_product(normal_of_triangle, lights[j].direction, 3);
-							}
-
-							diffuse[k] += Kd[k] * NdotL * lights[j].color[k];
-						}
-
-					}
-				}
-				for (int i = 0; i < 3; i++) {
-						C[i] = specular[i] + diffuse[i] + ambient[i];
-
-						if (C[i] < 0) {
-							C[i] = 0;
-						}
-
-						else if (C[i] > 1.0) {
-							C[i] = 1.0;
-						}
-				}
-				/*
-				GzColor C[3], specular[3], diffuse[3], ambient[3];
-				memset(C, 0, sizeof(C));
-				memset(specular, 0, sizeof(specular));
-				memset(diffuse, 0, sizeof(diffuse));
-				memset(ambient, 0, sizeof(ambient));
-				GzCoord E = { 0,0,-1 };
-				GzCoord R;
-				float RdotE, NdotL, NdotE;
-
-				for (int i = 0; i < 3; i++) {
+			if (interp_mode == GZ_FLAT || interp_mode == GZ_COLOR) {
+				for (int i = 0; i < n; i++) {
 					for (int j = 0; j < numlights; j++) {
 						NdotL = dot_product(normals[i], lights[j].direction, 3);
 						NdotE = dot_product(normals[i], E, 3);
 
 						if ((NdotL > 0 && NdotE > 0) || (NdotL < 0 && NdotE < 0)) {
-							
+
 							for (int k = 0; k < 3; k++) {
 								R[k] = 2.0 * NdotL * normals[i][k] - lights[j].direction[k];
 							}
@@ -743,7 +690,7 @@ int GzRender::GzPutTriangle(int numParts, GzToken* nameList, GzPointer* valueLis
 
 								diffuse[i][k] += Kd[k] * NdotL * lights[j].color[k];
 							}
-							
+
 						}
 					}
 
@@ -752,7 +699,7 @@ int GzRender::GzPutTriangle(int numParts, GzToken* nameList, GzPointer* valueLis
 					}
 				}
 
-				for (int i = 0; i < 3; i++) {
+				for (int i = 0; i < n; i++) {
 					for (int j = 0; j < 3; j++) {
 						C[i][j] = specular[i][j] + diffuse[i][j] + ambient[i][j];
 
@@ -765,175 +712,269 @@ int GzRender::GzPutTriangle(int numParts, GzToken* nameList, GzPointer* valueLis
 						}
 					}
 				}
-				*/
+			}
 
-				
-				GzCoord start = { V1[0], V1[1], V1[2] };
-				GzCoord end = { V2[0], V2[1], V2[2] };
-				GzCoord end_V3 = { V3[0], V3[1], V3[2] };
-				GzCoord current = { V1[0], V1[1], V1[2] };
-				GzCoord current_V3 = { V1[0], V1[1], V1[2] };
-				char edge;
-				float slopex, slopez, slopex_V3, slopez_V3, slopez_span, deltay, deltax;
-				int x, y, z;
-				GzIntensity r, g, b;
-				float start_span[2], end_span[2], current_span[2];
-				int made_switch = 0;
+			//For GZ_FLAT vertices are sorted after Color is computed
+			if (interp_mode == GZ_FLAT) {
+				sort_vertices(vertices, normals);
+			}
 
-				slopex = (end[0] - start[0]) / (end[1] - start[1]);
-				slopez = (end[2] - start[2]) / (end[1] - start[1]);
-				deltay = ceil(start[1]) - start[1];
+			double slopex_V2 = (vertices[1][0] - vertices[0][0]) / (vertices[1][1] - vertices[0][1]);
+			double slopex_V3 = (vertices[2][0] - vertices[0][0]) / (vertices[2][1] - vertices[0][1]);
 
-				slopex_V3 = (end_V3[0] - start[0]) / (end_V3[1] - start[1]);
-				slopez_V3 = (end_V3[2] - start[2]) / (end_V3[1] - start[1]);
-
-				if (slopex >= slopex_V3) {
-					edge = 'R';
-				}
-
-				else {
-					edge = 'L';
-				}
-
-				current[0] = current[0] + (slopex * deltay);
-				current[1] = current[1] + deltay;
-				current[2] = current[2] + (slopez * deltay);
-
-				current_V3[0] = current_V3[0] + (slopex_V3 * deltay);
-				current_V3[1] = current_V3[1] + deltay;
-				current_V3[2] = current_V3[2] + (slopez_V3 * deltay);
-
-				while (current[1] <= end[1]) {
-
-					//SPAN
-					if (edge == 'R') {
-						start_span[0] = current_V3[0];
-						start_span[1] = current_V3[2];
-						current_span[0] = start_span[0];
-						current_span[1] = start_span[1];
-						end_span[0] = current[0];
-						end_span[1] = current[2];
-					}
-
-					else {
-						start_span[0] = current[0];
-						start_span[1] = current[2];
-						current_span[0] = start_span[0];
-						current_span[1] = start_span[1];
-						end_span[0] = current_V3[0];
-						end_span[1] = current_V3[2];
-					}
-
-					deltax = ceil(start_span[0]) - start_span[0];
-					slopez_span = (end_span[1] - start_span[1]) / (end_span[0] - start_span[0]);
-					current_span[0] = current_span[0] + deltax;
-					current_span[1] = current_span[1] + (slopez_span * deltax);
-
-					while (current_span[0] <= end_span[0]) {
-
-						x = std::ceil(current_span[0]);
-						y = std::ceil(current[1]);
-						z = std::ceil(current_span[1]);
-
-						if (interp_mode == GZ_FLAT) {
-							r = ctoi(C[0]);
-							g = ctoi(C[1]);
-							b = ctoi(C[2]);
-						}
-
-						GzPut(x, y, r, g, b, 1, z);
-
-						deltax = 1;
-						current_span[0] = current_span[0] + deltax;
-						current_span[1] = current_span[1] + (slopez_span * deltax);
-					}
-
-					deltay = 1;
-					current[0] = current[0] + (slopex * deltay);
-					current[1] = current[1] + deltay;
-					current[2] = current[2] + (slopez * deltay);
-
-					current_V3[0] = current_V3[0] + (slopex_V3 * deltay);
-					current_V3[1] = current_V3[1] + deltay;
-					current_V3[2] = current_V3[2] + (slopez_V3 * deltay);
-				}
-				//Swapping edges
-
-				start[0] = V2[0];
-				start[1] = V2[1];
-				start[2] = V2[2];
-				current[0] = V2[0];
-				current[1] = V2[1];
-				current[2] = V2[2];
-				end[0] = V3[0];
-				end[1] = V3[1];
-				end[2] = V3[2];
-				slopex = (end[0] - start[0]) / (end[1] - start[1]);
-				slopez = (end[2] - start[2]) / (end[1] - start[1]);
-
-				deltay = ceil(start[1]) - start[1];
-				current[0] = current[0] + (slopex * deltay);
-				current[1] = current[1] + deltay;
-				current[2] = current[2] + (slopez * deltay);
-				while (current[1] <= end[1]) {
-
-					//SPAN
-					if (edge == 'R') {
-						start_span[0] = current_V3[0];
-						start_span[1] = current_V3[2];
-						current_span[0] = start_span[0];
-						current_span[1] = start_span[1];
-						end_span[0] = current[0];
-						end_span[1] = current[2];
-					}
-
-					else {
-						start_span[0] = current[0];
-						start_span[1] = current[2];
-						current_span[0] = start_span[0];
-						current_span[1] = start_span[1];
-						end_span[0] = current_V3[0];
-						end_span[1] = current_V3[2];
-
-					}
-
-					deltax = ceil(start_span[0]) - start_span[0];
-					slopez_span = (end_span[1] - start_span[1]) / (end_span[0] - start_span[0]);
-					current_span[0] = current_span[0] + deltax;
-					current_span[1] = current_span[1] + (slopez_span * deltax);
-
-					while (current_span[0] <= end_span[0]) {
-
-						x = std::ceil(current_span[0]);
-						y = std::ceil(current[1]);
-						z = std::ceil(current_span[1]);
-
-						if (interp_mode == GZ_FLAT) {
-							r = ctoi(C[0]);
-							g = ctoi(C[1]);
-							b = ctoi(C[2]);
-						}
-
-						GzPut(x, y, r, g, b, 1, z);
-
-						deltax = 1;
-						current_span[0] = current_span[0] + deltax;
-						current_span[1] = current_span[1] + (slopez_span * deltax);
-					}
-
-					deltay = 1;
-					current[0] = current[0] + (slopex * deltay);
-					current[1] = current[1] + deltay;
-					current[2] = current[2] + (slopez * deltay);
-
-					current_V3[0] = current_V3[0] + (slopex_V3 * deltay);
-					current_V3[1] = current_V3[1] + deltay;
-					current_V3[2] = current_V3[2] + (slopez_V3 * deltay);
+			if (slopex_V3 > slopex_V2) {
+				for (int i = 0; i < 3; i++) {
+					swap(vertices[1][i], vertices[2][i]);
+					swap(normals[1][i], normals[2][i]);
+					swap(C[1][i], C[2][i]);
 				}
 			}
+
+			GzCoord V1 = { vertices[0][0], vertices[0][1],vertices[0][2] };
+			GzCoord V2 = { vertices[1][0], vertices[1][1],vertices[1][2] };
+			GzCoord V3 = { vertices[2][0], vertices[2][1],vertices[2][2] };
+			GzColor interpolated_color;
+			GzCoord interpolated_normal;
+
+			float edge1, edge2, edge3;
+			float edge1_A, edge1_B, edge1_C, edge2_A, edge2_B, edge2_C, edge3_A, edge3_B, edge3_C;
+			float Z_interpolated, Z_A, Z_B, Z_C, Z_D, Z_v1_v2, Z_v1_v3;
+			float edge1x, edge1y, edge1z, edge2x, edge2y, edge2z,
+				edge1redColor, edge2redColor, red_A, red_B, red_C, red_D,
+				edge1greenColor, edge2greenColor, green_A, green_B, green_C, green_D,
+				edge1blueColor, edge2blueColor, blue_A, blue_B, blue_C, blue_D,
+				edge1normalx, edge2normalx, normalx_A, normalx_B, normalx_C, normalx_D,
+				edge1normaly, edge2normaly, normaly_A, normaly_B, normaly_C, normaly_D,
+				edge1normalz, edge2normalz, normalz_A, normalz_B, normalz_C, normalz_D;
+
+			edge1x = V2[0] - V1[0];
+			edge1y = V2[1] - V1[1];
+			edge1z = V2[2] - V1[2];
+
+			edge2x = V3[0] - V1[0];
+			edge2y = V3[1] - V1[1];
+			edge2z = V3[2] - V1[2];
+
+
+			edge1_A = V2[1] - V1[1];
+			edge2_A = V3[1] - V2[1];
+			edge3_A = V1[1] - V3[1];
+
+			edge1_B = -1.0 * (V2[0] - V1[0]);
+			edge2_B = -1.0 * (V3[0] - V2[0]);
+			edge3_B = -1.0 * (V1[0] - V3[0]);
+
+			edge1_C = (-1.0 * edge1_B * V1[1]) - (edge1_A * V1[0]);
+			edge2_C = (-1.0 * edge2_B * V2[1]) - (edge2_A * V2[0]);
+			edge3_C = (-1.0 * edge3_B * V3[1]) - (edge3_A * V3[0]);
+
+			Z_A = edge1y * edge2z - edge1z * edge2y;
+			Z_B = edge1z * edge2x - edge1x * edge2z;
+			Z_C = edge1x * edge2y - edge1y * edge2x;
+			Z_D = -(Z_A * V1[0] + Z_B * V1[1] + Z_C * V1[2]);
+
+			if (interp_mode == GZ_COLOR) {
+
+				edge1redColor = C[1][0] - C[0][0];
+				edge2redColor = C[2][0] - C[0][0];
+
+				red_A = edge1y * edge2redColor - edge1redColor * edge2y;
+				red_B = edge1redColor * edge2x - edge1x * edge2redColor;
+				red_C = edge1x * edge2y - edge1y * edge2x;
+				red_D = -(red_A * V1[0] + red_B * V1[1] + red_C * C[0][0]);
+
+
+				edge1greenColor = C[1][1] - C[0][1];
+				edge2greenColor = C[2][1] - C[0][1];
+
+				green_A = edge1y * edge2greenColor - edge1greenColor * edge2y;
+				green_B = edge1greenColor * edge2x - edge1x * edge2greenColor;
+				green_C = red_C;
+				green_D = -(green_A * V1[0] + green_B * V1[1] + green_C * C[0][1]);
+
+				edge1blueColor = C[1][2] - C[0][2];
+				edge2blueColor = C[2][2] - C[0][2];
+
+				blue_A = edge1y * edge2blueColor - edge1blueColor * edge2y;
+				blue_B = edge1blueColor * edge2x - edge1x * edge2blueColor;
+				blue_C = red_C;
+				blue_D = -(blue_A * V1[0] + blue_B * V1[1] + blue_C * C[0][2]);
+
+			}
+
+			if (interp_mode == GZ_NORMALS) {
+
+				edge1normalx = normals[1][0] - normals[0][0];
+				edge2normalx = normals[2][0] - normals[0][0];
+
+				normalx_A = edge1y * edge2normalx - edge1normalx * edge2y;
+				normalx_B = edge1normalx * edge2x - edge1x * edge2normalx;
+				normalx_C = edge1x * edge2y - edge1y * edge2x;
+				normalx_D = -(normalx_A * V1[0] + normalx_B * V1[1] + normalx_C * normals[0][0]);
+
+				edge1normaly = normals[1][1] - normals[0][1];
+				edge2normaly = normals[2][1] - normals[0][1];
+
+				normaly_A = edge1y * edge2normaly - edge1normaly * edge2y;
+				normaly_B = edge1normaly * edge2x - edge1x * edge2normaly;
+				normaly_C = normalx_C;
+				normaly_D = -(normaly_A * V1[0] + normaly_B * V1[1] + normaly_C * normals[0][1]);
+
+				edge1normalz = normals[1][2] - normals[0][2];
+				edge2normalz = normals[2][2] - normals[0][2];
+
+				normalz_A = edge1y * edge2normalz - edge1normalz * edge2y;
+				normalz_B = edge1normalz * edge2x - edge1x * edge2normalz;
+				normalz_C = normalx_C;
+				normalz_D = -(normalz_A * V1[0] + normalz_B * V1[1] + normalz_C * normals[0][2]);
+			}
+
+			float y_min, y_max, x_min, x_max;
+			int r, g, b, x, y, z;
+
+			y_min = V1[1];
+			y_max = V1[1];
+			x_min = V1[0];
+			x_max = V1[0];
+
+			for (int i = 0; i < 3; i++) {
+
+				if (vertices[i][1] > y_max) {
+					y_max = vertices[i][1];
+				}
+				if (vertices[i][1] < y_min) {
+					y_min = vertices[i][1];
+				}
+				if (vertices[i][0] > x_max) {
+					x_max = vertices[i][0];
+				}
+				if (vertices[i][0] < x_min) {
+					x_min = vertices[i][0];
+				}
+
+			}
+
+
+			for (int i = round(x_min); i <= round(x_max); i++) {
+				for (int j = round(y_min); j <= round(y_max); j++) {
+
+					edge1 = edge1_A * i + edge1_B * j + edge1_C;
+					edge2 = edge2_A * i + edge2_B * j + edge2_C;
+					edge3 = edge3_A * i + edge3_B * j + edge3_C;
+
+					if (((edge1 > 0 && edge2 > 0 && edge3 > 0 && Z_C != 0) || (edge1 < 0 && edge2 < 0 && edge3 < 0 && Z_C != 0) || (edge1 == 0 || edge2 == 0 || edge3 == 0))) {
+
+						Z_interpolated = -(Z_A * i + Z_B * j + Z_D) / Z_C;
+						z = round(Z_interpolated);
+
+						if (z >= 0) {
+
+							if (interp_mode == GZ_FLAT) {
+								r = ctoi(C[0][0]);
+								g = ctoi(C[0][1]);
+								b = ctoi(C[0][2]);
+							}
+
+							if (interp_mode == GZ_COLOR) {
+
+								if (red_C != 0 && green_C != 0 && blue_C != 0) {
+									interpolated_color[0] = -(red_A * i + red_B * j + red_D) / red_C;
+									interpolated_color[1] = -(green_A * i + green_B * j + green_D) / green_C;
+									interpolated_color[2] = -(blue_A * i + blue_B * j + blue_D) / blue_C;
+
+									r = ctoi(interpolated_color[0]);
+									g = ctoi(interpolated_color[1]);
+									b = ctoi(interpolated_color[2]);
+
+								}
+
+							}
+
+							if (interp_mode == GZ_NORMALS) {
+
+								if (normalx_C != 0 && normaly_C != 0 && normalz_C != 0) {
+
+									interpolated_normal[0] = -(normalx_A * i + normalx_B * j + normalx_D) / normalx_C;
+									interpolated_normal[1] = -(normaly_A * i + normaly_B * j + normaly_D) / normaly_C;
+									interpolated_normal[2] = -(normalz_A * i + normalz_B * j + normalz_D) / normalz_C;
+
+									for (int j = 0; j < numlights; j++) {
+
+										NdotL = dot_product(interpolated_normal, lights[j].direction, 3);
+										NdotE = dot_product(interpolated_normal, E, 3);
+
+										if ((NdotL > 0 && NdotE > 0) || (NdotL < 0 && NdotE < 0)) {
+
+											for (int k = 0; k < 3; k++) {
+												R[k] = 2.0 * NdotL * interpolated_normal[k] - lights[j].direction[k];
+											}
+
+											normalize(R, 3);
+											RdotE = dot_product(R, E, 3);
+
+											if (RdotE < 0) {
+												RdotE = 0;
+											}
+
+											else if (RdotE > 1) {
+												RdotE = 1;
+											}
+
+											for (int k = 0; k < 3; k++) {
+												specular_N[k] += Ks[k] * pow(RdotE, spec) * lights[j].color[k];
+
+												if (NdotE < 0 || NdotL < 0) {
+													for (int m = 0; m < 3; m++) {
+														interpolated_normal[m] *= -1;
+													}
+													NdotL = dot_product(interpolated_normal, lights[j].direction, 3);
+												}
+
+												diffuse_N[k] += Kd[k] * NdotL * lights[j].color[k];
+											}
+
+										}
+									}
+
+									for (int i = 0; i < 3; i++) {
+										ambient_N[i] += Ka[i] * ambientlight.color[i];
+									}
+
+
+									for (int i = 0; i < 3; i++) {
+										C_N[i] = specular_N[i] + diffuse_N[i] + ambient_N[i];
+										if (C_N[i] > 1.0) {
+											C_N[i] = 1.0;
+										}
+										if (C_N[i] < 0) {
+											C_N[i] = 0;
+										}
+									}
+
+									r = ctoi(C_N[0]);
+									g = ctoi(C_N[1]);
+									b = ctoi(C_N[2]);
+
+									memset(specular_N, 0, sizeof(specular_N));
+									memset(diffuse_N, 0, sizeof(diffuse_N));
+									memset(ambient_N, 0, sizeof(ambient_N));
+								}
+
+							}
+
+							x = i;
+							y = j;
+							GzPut(x, y, r, g, b, 1, z);
+						}
+					}
+
+				}
+			}
+
 		}
 
 	}
+
 
 	return GZ_SUCCESS;
 }
