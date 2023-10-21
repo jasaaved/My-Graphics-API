@@ -506,7 +506,7 @@ int GzRender::GzFlushDisplay2FrameBuffer()
 /***********************************************/
 /* HW2 methods: implement from here */
 
-void sort_vertices(GzCoord* vertices, GzCoord* normals) {
+void sort_vertices(GzCoord* vertices, GzCoord* normals, GzTextureIndex* uvs) {
 	int current_lowest;
 	float highest_height;
 
@@ -528,6 +528,7 @@ void sort_vertices(GzCoord* vertices, GzCoord* normals) {
 		if (current_lowest != i) {
 			swap(vertices[i], vertices[current_lowest]);
 			swap(normals[i], normals[current_lowest]);
+			swap(uvs[i], uvs[current_lowest]);
 		}
 	}
 }
@@ -578,6 +579,9 @@ int GzRender::GzPutAttribute(int numAttributes, GzToken* nameList, GzPointer* va
 			spec = ((float*)valueList[i])[0];
 		}
 
+		else if (nameList[i] == GZ_TEXTURE_MAP) {
+			tex_fun = (GzTexture)valueList[i];
+		}
 
 	}
 
@@ -599,11 +603,16 @@ int GzRender::GzPutTriangle(int numParts, GzToken* nameList, GzPointer* valueLis
 		if (nameList[s] == GZ_POSITION) {
 			float vertices_in_4D[3][4], normals_in_4D[3][4], transformed_vertices[3][4], transformed_normals[3][4];
 			GzCoord vertices[3], normals[3];
+			GzTextureIndex uvs[3];
 
 			for (int i = 0; i < 3; i++) {
 				for (int j = 0; j < 3; j++) {
 					vertices_in_4D[i][j] = ((GzCoord*)(valueList[0]))[i][j];
 					normals_in_4D[i][j] = ((GzCoord*)(valueList[1]))[i][j];
+
+					if (j < 2) {
+						uvs[i][j] = ((GzTextureIndex*)(valueList[2]))[i][j];
+					}
 				}
 				vertices_in_4D[i][3] = 1.0;
 				normals_in_4D[i][3] = 1.0;
@@ -651,7 +660,7 @@ int GzRender::GzPutTriangle(int numParts, GzToken* nameList, GzPointer* valueLis
 
 			else {
 				n = 3;
-				sort_vertices(vertices, normals);
+				sort_vertices(vertices, normals, uvs);
 			}
 
 
@@ -716,7 +725,7 @@ int GzRender::GzPutTriangle(int numParts, GzToken* nameList, GzPointer* valueLis
 
 			//For GZ_FLAT vertices are sorted after Color is computed
 			if (interp_mode == GZ_FLAT) {
-				sort_vertices(vertices, normals);
+				sort_vertices(vertices, normals, uvs);
 			}
 
 			double slopex_V2 = (vertices[1][0] - vertices[0][0]) / (vertices[1][1] - vertices[0][1]);
@@ -727,6 +736,20 @@ int GzRender::GzPutTriangle(int numParts, GzToken* nameList, GzPointer* valueLis
 					swap(vertices[1][i], vertices[2][i]);
 					swap(normals[1][i], normals[2][i]);
 					swap(C[1][i], C[2][i]);
+
+					if (i < 2) {
+						swap(uvs[1][i], uvs[2][i]);
+					}
+				}
+			}
+
+			if (tex_fun != NULL) {
+				float VzP;
+
+				for (int i = 0; i < 3; i++) {
+					VzP = (vertices[i][2] / (MAXINT - vertices[i][2]));
+					uvs[i][0] /= (VzP + 1);
+					uvs[i][1] /= (VzP + 1);
 				}
 			}
 
@@ -827,6 +850,10 @@ int GzRender::GzPutTriangle(int numParts, GzToken* nameList, GzPointer* valueLis
 				normalz_B = edge1normalz * edge2x - edge1x * edge2normalz;
 				normalz_C = normalx_C;
 				normalz_D = -(normalz_A * V1[0] + normalz_B * V1[1] + normalz_C * normals[0][2]);
+			}
+
+			if (tex_fun != NULL) {
+
 			}
 
 			float y_min, y_max, x_min, x_max;

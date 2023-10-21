@@ -10,6 +10,7 @@ int reset = 1;
 /* Image texture function */
 int tex_fun(float u, float v, GzColor color)
 {
+    return 2;
   unsigned char		pixel[3];
   unsigned char     dummy;
   char  		foo[8];
@@ -51,7 +52,7 @@ int tex_fun(float u, float v, GzColor color)
 /* Procedural texture function */
 int ptex_fun(float u, float v, GzColor color)
 {
-
+    return 1;
 	return GZ_SUCCESS;
 }
 
