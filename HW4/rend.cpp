@@ -682,10 +682,11 @@ int GzRender::GzPutTriangle(int numParts, GzToken* nameList, GzPointer* valueLis
 								specular[i][k] += Ks[k] * pow(RdotE, spec) * lights[j].color[k];
 
 								if (NdotE < 0 || NdotL < 0) {
+									GzCoord normal_copy[3];
 									for (int m = 0; m < 3; m++) {
-										normals[i][m] *= -1;
+										normal_copy[i][m] = normals[i][m] * -1;
 									}
-									NdotL = dot_product(normals[i], lights[j].direction, 3);
+									NdotL = dot_product(normal_copy[i], lights[j].direction, 3);
 								}
 
 								diffuse[i][k] += Kd[k] * NdotL * lights[j].color[k];
@@ -924,10 +925,11 @@ int GzRender::GzPutTriangle(int numParts, GzToken* nameList, GzPointer* valueLis
 												specular_N[k] += Ks[k] * pow(RdotE, spec) * lights[j].color[k];
 
 												if (NdotE < 0 || NdotL < 0) {
+													GzCoord normal_copy;
 													for (int m = 0; m < 3; m++) {
-														interpolated_normal[m] *= -1;
+														normal_copy[m] = interpolated_normal[m] * -1;
 													}
-													NdotL = dot_product(interpolated_normal, lights[j].direction, 3);
+													NdotL = dot_product(normal_copy, lights[j].direction, 3);
 												}
 
 												diffuse_N[k] += Kd[k] * NdotL * lights[j].color[k];
