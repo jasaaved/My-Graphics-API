@@ -939,7 +939,7 @@ int GzRender::GzPutTriangle(int numParts, GzToken* nameList, GzPointer* valueLis
 										interpolated_uv[0] = -(U_A * i + U_B * j + U_D) / U_C;
 										interpolated_uv[1] = -(V_A * i + V_B * j + V_D) / V_C;
 
-										VzPrime = z / (MAXINT - z);
+										VzPrime = z / ((float)MAXINT - z);
 
 										for (int i = 0; i < 2; i++) {
 											interpolated_uv[i] *= (VzPrime + 1.0);
