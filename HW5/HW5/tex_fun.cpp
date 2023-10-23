@@ -70,6 +70,29 @@ int tex_fun(float u, float v, GzColor color)
 /* Procedural texture function */
 int ptex_fun(float u, float v, GzColor color)
 {
+    u = max(0.0, min(u, 1.0));
+    v = max(0.0, min(v, 1.0));
+    int n = 6;
+    int c;
+
+    u *= n;
+    v *= n;
+
+    if (((int)u % 2 == 0 && (int)v % 2 == 0) || ((int)u % 2 != 0 && (int)v % 2 != 0)) {
+        c = 1;
+    }
+
+    else {
+        c = 0;
+    }
+
+    for (int i = 0; i < 3; i++) {
+        color[i] = c;
+    }
+
+ 
+
+
     return 1;
 	return GZ_SUCCESS;
 }
