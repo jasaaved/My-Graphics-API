@@ -699,8 +699,8 @@ int GzRender::GzPutTriangle(int numParts, GzToken* nameList, GzPointer* valueLis
 
 								if (NdotE < 0 || NdotL < 0) {
 									GzCoord normal_copy[3];
-									for (int m = 0; m < 3; m++) {
-										normal_copy[i][m] = normals[i][m] * -1;
+									for (int s = 0; s < 3; s++) {
+										normal_copy[i][s] = normals[i][s] * -1;
 									}
 									NdotL = dot_product(normal_copy[i], lights[j].direction, 3);
 								}
@@ -768,6 +768,7 @@ int GzRender::GzPutTriangle(int numParts, GzToken* nameList, GzPointer* valueLis
 			GzColor interpolated_color;
 			GzCoord interpolated_normal;
 			GzTextureIndex interpolated_uv;
+			GzColor UV;
 
 			float edge1, edge2, edge3;
 			float edge1_A, edge1_B, edge1_C, edge2_A, edge2_B, edge2_C, edge3_A, edge3_B, edge3_C;
@@ -923,6 +924,20 @@ int GzRender::GzPutTriangle(int numParts, GzToken* nameList, GzPointer* valueLis
 
 						if (z >= 0) {
 
+							if (tex_fun != NULL && interp_mode != GZ_FLAT) {
+								interpolated_uv[0] = -(U_A * i + U_B * j + U_D) / U_C;
+								interpolated_uv[1] = -(V_A * i + V_B * j + V_D) / V_C;
+
+								VzPrime = z / ((float)MAXINT - z);
+
+								for (int i = 0; i < 2; i++) {
+									interpolated_uv[i] *= (VzPrime + 1.0);
+								}
+
+								tex_fun(interpolated_uv[0], interpolated_uv[1], UV);
+							}
+							
+
 							if (interp_mode == GZ_FLAT) {
 								r = ctoi(C[0][0]);
 								g = ctoi(C[0][1]);
@@ -937,117 +952,108 @@ int GzRender::GzPutTriangle(int numParts, GzToken* nameList, GzPointer* valueLis
 									interpolated_color[2] = -(blue_A * i + blue_B * j + blue_D) / blue_C;
 
 									if (tex_fun != NULL) {
-										GzColor UV_Color;
-										interpolated_uv[0] = -(U_A * i + U_B * j + U_D) / U_C;
-										interpolated_uv[1] = -(V_A * i + V_B * j + V_D) / V_C;
-
-										VzPrime = z / ((float)MAXINT - z);
-
-										for (int i = 0; i < 2; i++) {
-											interpolated_uv[i] *= (VzPrime + 1.0);
-										}
-
-										tex_fun(interpolated_uv[0], interpolated_uv[1], UV_Color);
-
 										for (int i = 0; i < 3; i++) {
-											interpolated_color[i] *= UV_Color[i];
+											interpolated_color[i] *= UV[i];
 										}
-
-										r = ctoi(interpolated_color[0]);
-										g = ctoi(interpolated_color[1]);
-										b = ctoi(interpolated_color[2]);
-
 									}
 
+									r = ctoi(interpolated_color[0]);
+									g = ctoi(interpolated_color[1]);
+									b = ctoi(interpolated_color[2]);
 								}
-
-								if (interp_mode == GZ_NORMALS) {
-
-									if (normalx_C != 0 && normaly_C != 0 && normalz_C != 0) {
-
-										interpolated_normal[0] = -(normalx_A * i + normalx_B * j + normalx_D) / normalx_C;
-										interpolated_normal[1] = -(normaly_A * i + normaly_B * j + normaly_D) / normaly_C;
-										interpolated_normal[2] = -(normalz_A * i + normalz_B * j + normalz_D) / normalz_C;
-
-										for (int j = 0; j < numlights; j++) {
-
-											NdotL = dot_product(interpolated_normal, lights[j].direction, 3);
-											NdotE = dot_product(interpolated_normal, E, 3);
-
-											if ((NdotL > 0 && NdotE > 0) || (NdotL < 0 && NdotE < 0)) {
-
-												for (int k = 0; k < 3; k++) {
-													R[k] = 2.0 * NdotL * interpolated_normal[k] - lights[j].direction[k];
-												}
-
-												normalize(R, 3);
-												RdotE = dot_product(R, E, 3);
-
-												if (RdotE < 0) {
-													RdotE = 0;
-												}
-
-												else if (RdotE > 1) {
-													RdotE = 1;
-												}
-
-												for (int k = 0; k < 3; k++) {
-													specular_N[k] += Ks[k] * pow(RdotE, spec) * lights[j].color[k];
-
-													if (NdotE < 0 || NdotL < 0) {
-														GzCoord normal_copy;
-														for (int m = 0; m < 3; m++) {
-															normal_copy[m] = interpolated_normal[m] * -1;
-														}
-														NdotL = dot_product(normal_copy, lights[j].direction, 3);
-													}
-
-													diffuse_N[k] += Kd[k] * NdotL * lights[j].color[k];
-												}
-
-											}
-										}
-
-										for (int i = 0; i < 3; i++) {
-											ambient_N[i] += Ka[i] * ambientlight.color[i];
-										}
-
-
-										for (int i = 0; i < 3; i++) {
-											C_N[i] = specular_N[i] + diffuse_N[i] + ambient_N[i];
-											if (C_N[i] > 1.0) {
-												C_N[i] = 1.0;
-											}
-											if (C_N[i] < 0) {
-												C_N[i] = 0;
-											}
-										}
-
-										r = ctoi(C_N[0]);
-										g = ctoi(C_N[1]);
-										b = ctoi(C_N[2]);
-
-										memset(specular_N, 0, sizeof(specular_N));
-										memset(diffuse_N, 0, sizeof(diffuse_N));
-										memset(ambient_N, 0, sizeof(ambient_N));
-									}
-
-								}
-
-								x = i;
-								y = j;
-								GzPut(x, y, r, g, b, 1, z);
 							}
+
+							if (interp_mode == GZ_NORMALS) {
+
+								if (normalx_C != 0 && normaly_C != 0 && normalz_C != 0) {
+
+									interpolated_normal[0] = -(normalx_A * i + normalx_B * j + normalx_D) / normalx_C;
+									interpolated_normal[1] = -(normaly_A * i + normaly_B * j + normaly_D) / normaly_C;
+									interpolated_normal[2] = -(normalz_A * i + normalz_B * j + normalz_D) / normalz_C;
+
+									for (int i = 0; i < 3; i++) {
+										Kd[i] = UV[i];
+										Ka[i] = UV[i];
+									}
+							
+									for (int j = 0; j < numlights; j++) {
+
+										NdotL = dot_product(interpolated_normal, lights[j].direction, 3);
+										NdotE = dot_product(interpolated_normal, E, 3);
+
+										if ((NdotL > 0 && NdotE > 0) || (NdotL < 0 && NdotE < 0)) {
+
+											for (int k = 0; k < 3; k++) {
+												R[k] = 2.0 * NdotL * interpolated_normal[k] - lights[j].direction[k];
+											}
+
+											normalize(R, 3);
+											RdotE = dot_product(R, E, 3);
+
+											if (RdotE < 0) {
+												RdotE = 0;
+											}
+
+											else if (RdotE > 1) {
+												RdotE = 1;
+											}
+
+											for (int k = 0; k < 3; k++) {
+												specular_N[k] += Ks[k] * pow(RdotE, spec) * lights[j].color[k];
+
+												if (NdotE < 0 || NdotL < 0) {
+													GzCoord normal_copy;
+													for (int s = 0; s < 3; s++) {
+														normal_copy[s] = interpolated_normal[s] * -1;
+													}
+													NdotL = dot_product(normal_copy, lights[j].direction, 3);
+												}
+
+												diffuse_N[k] += Kd[k] * NdotL * lights[j].color[k];
+											}
+
+										}
+									}
+
+									for (int i = 0; i < 3; i++) {
+										ambient_N[i] += Ka[i] * ambientlight.color[i];
+									}
+
+
+									for (int i = 0; i < 3; i++) {
+										C_N[i] = specular_N[i] + diffuse_N[i] + ambient_N[i];
+										if (C_N[i] > 1.0) {
+											C_N[i] = 1.0;
+										}
+										if (C_N[i] < 0) {
+											C_N[i] = 0;
+										}
+									}
+
+									r = ctoi(C_N[0]);
+									g = ctoi(C_N[1]);
+									b = ctoi(C_N[2]);
+
+									memset(specular_N, 0, sizeof(specular_N));
+									memset(diffuse_N, 0, sizeof(diffuse_N));
+									memset(ambient_N, 0, sizeof(ambient_N));
+								}
+
+							}
+
+							x = i;
+							y = j;
+							GzPut(x, y, r, g, b, 1, z);
 						}
-
 					}
-				}
 
+				}
 			}
 
 		}
+
 	}
-
-
-	return GZ_SUCCESS;
+		return GZ_SUCCESS;
 }
+
+	
