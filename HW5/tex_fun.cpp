@@ -72,28 +72,23 @@ int ptex_fun(float u, float v, GzColor color)
 {
     u = max(0.0, min(u, 1.0));
     v = max(0.0, min(v, 1.0));
-    int n = 6;
-    int c;
+    int n = 8;
 
     u *= n;
     v *= n;
 
     if (((int)u % 2 == 0 && (int)v % 2 == 0) || ((int)u % 2 != 0 && (int)v % 2 != 0)) {
-        c = 1.0;
+        color[0] = 0;
     }
 
     else {
-        c = 0;
+        color[0] = 1.0;
     }
 
-    for (int i = 0; i < 3; i++) {
-        color[i] = c;
+    for (int i = 1; i < 3; i++) {
+        color[i] = 0;
     }
 
- 
-
-
-    return 1;
 	return GZ_SUCCESS;
 }
 
