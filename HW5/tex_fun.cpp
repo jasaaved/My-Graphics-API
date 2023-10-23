@@ -79,7 +79,7 @@ int ptex_fun(float u, float v, GzColor color)
     v *= n;
 
     if (((int)u % 2 == 0 && (int)v % 2 == 0) || ((int)u % 2 != 0 && (int)v % 2 != 0)) {
-        c = 1;
+        c = 1.0;
     }
 
     else {
