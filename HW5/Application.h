@@ -12,6 +12,8 @@
 #include "Gz.h"
 #include "rend.h"
 
+#define AAKERNEL_SIZE 6
+
 class Application  
 {
 public:
@@ -20,6 +22,7 @@ public:
 	
 public:
 	GzRender*  m_pRender;		// the renderer
+	GzRender* multi_renderer[AAKERNEL_SIZE];
 	GzInput*   m_pUserInput;
 	char* m_pFrameBuffer;	// Frame Buffer
 	int   m_nWidth;			// width of Frame Buffer

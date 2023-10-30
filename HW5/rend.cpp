@@ -179,6 +179,10 @@ GzRender::GzRender(int xRes, int yRes)
 	memset(m_camera.worldup, 0, sizeof(m_camera.worldup));
 	m_camera.worldup[1] = 1.0;
 
+	//HW6
+	Xoffset = 0;
+	Yoffset = 0;
+
 }
 
 GzRender::~GzRender()
@@ -583,6 +587,13 @@ int GzRender::GzPutAttribute(int numAttributes, GzToken* nameList, GzPointer* va
 			tex_fun = (GzTexture)valueList[i];
 		}
 
+		else if (nameList[i] == GZ_AASHIFTX) {
+			Xoffset = ((float*)valueList[i])[0];
+		}
+
+		else if (nameList[i] == GZ_AASHIFTY) {
+			Yoffset = ((float*)valueList[i])[0];
+		}
 	}
 
 	return GZ_SUCCESS;
@@ -633,6 +644,14 @@ int GzRender::GzPutTriangle(int numParts, GzToken* nameList, GzPointer* valueLis
 				for (int j = 0; j < 3; j++) {
 					vertices[i][j] = transformed_vertices[i][j] / transformed_vertices[i][3];
 					normals[i][j] = transformed_normals[i][j] / transformed_normals[i][3];
+				}
+
+			}
+
+			if (Xoffset != 0 || Yoffset != 0) {
+				for (int i = 0; i < 3; i++) {
+					vertices[i][0] -= Xoffset;
+					vertices[i][1] - +Yoffset;
 				}
 			}
 
@@ -971,9 +990,11 @@ int GzRender::GzPutTriangle(int numParts, GzToken* nameList, GzPointer* valueLis
 									interpolated_normal[1] = -(normaly_A * i + normaly_B * j + normaly_D) / normaly_C;
 									interpolated_normal[2] = -(normalz_A * i + normalz_B * j + normalz_D) / normalz_C;
 
-									for (int i = 0; i < 3; i++) {
-										Kd[i] = UV[i];
-										Ka[i] = UV[i];
+									if (tex_fun != NULL) {
+										for (int i = 0; i < 3; i++) {
+											Kd[i] = UV[i];
+											Ka[i] = UV[i];
+										}
 									}
 							
 									for (int j = 0; j < numlights; j++) {
