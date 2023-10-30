@@ -342,7 +342,12 @@ int Application5::Clean()
 	 */ 
 	int	status = 0; 
 
-	//delete(m_pRender);
+	delete(m_pRender);
+
+	for (int i = 0; i < AAKERNEL_SIZE; i++) {
+		delete(multi_renderer[i]);
+	}
+
 	status |= GzFreeTexture();
 	
 	if (status) 
